@@ -4,7 +4,7 @@ function [Ae,nodeid_lft,nodeid_rght,nodeid_wlcond,Ae_only_leaving,Ae_only_enteri
 %clc; close all; clear all; L=3; M=2; N=2; dx = 0.001;
 %grid_tmp = ones(L,M,N); idxS = find(abs(grid_tmp(:)) > 1e-12); clear grid_tmp;
 %[grid_intcon] = generategridfrombbox(dx,[0 L*dx],[0 M*dx],[0 N*dx],1);
-%fl_meth_comp=2 % methods: 0-> slow , 1-> fast with sort, 2-> fast w/ graph
+%fl_meth_comp=2 % methods: 0-> slow , 1-> fast with sort, 2-> fast w/ graph, 3-> fast w/ inspection
 %pnt_exc=[]; pnt_grnd=[];
 
 nodeid_4_injectcurr=[];
@@ -13,7 +13,7 @@ nodeid_4_well_cond=[];
 
 tstart = tic;
 fl_profile = 0;
-fl_meth_comp = 2;
+fl_meth_comp = 3;
 
 % constants
 num_nonair_cube=length(idxS);
@@ -62,7 +62,342 @@ for kk=1:num_ports
     dum_grnd=dum_grnd+num_node_each_port(kk,1);
 end
 
-if (fl_meth_comp == 2) % graph based fast Ae generation
+if (fl_meth_comp == 3) % inspection based fast Ae generation
+    
+    disp('-----------------------------------------------------')
+    disp('Generating Ae matrix by inspection...')
+
+    % 1) Get the 'boolean' matrix. Zero if air voxel, non-empty voxel 
+    %    sequential number if non-empty. Sequence is x, y, z as per natural
+    %    MatLab multi-dimensional matrix index ordering
+    tic
+    boolean_tens=zeros(L,M,N);
+    boolean_tens(idxS)=[1:num_nonair_cube];
+
+    if(fl_profile == 1); disp(['Time for obtaining numbering matrix ::: ', num2str(toc)]); end
+    
+   
+    % 7) Find the panels of each voxel. Voxels are always scan first along x, then y, then z.
+    %    However, x panels are numbered the same way, but y panels are ordered y, z, x
+    %    and z panels are ordered z, x, y
+    
+    tic
+    
+    % Numbering panels along x direction
+    %
+    % This is easy, as the panels along the x direction follow the same x,y,z voxel order
+    % of the voxel scan
+    
+    % counter for all panels along x
+    ind_panel = 1;
+    % non-empty voxel counter
+    vox_num = 1;
+    voxel2panel_x=zeros(num_nonair_cube,2); % 1 left, 2 right panel
+    for nn=1:N
+        for mm=1:M
+            for ll=1:L
+                % if non-empty voxel 
+                if (boolean_tens(ll,mm,nn) ~=0)
+                    % check if next voxel along x (as we are scanning along x)
+                    % is empty or not
+                    ll_next_one = ll + 1;
+                    % if this was the last voxel in the row, there is no next one
+                    if (ll_next_one > L) 
+                        ll_next_one = -1;
+                    % now we know it is not the last one, so we can safely access
+                    % the next one and test it for emptyness
+                    elseif (boolean_tens(ll_next_one, mm, nn) ==0)
+                        ll_next_one = -1;
+                    end
+
+                    % assign panels to voxel
+                    voxel2panel_x(vox_num,1)=ind_panel; % left panel
+                    ind_panel=ind_panel+1;
+                    voxel2panel_x(vox_num,2)=ind_panel; % right panel
+                    
+                    vox_num = vox_num + 1;
+                    
+                    % if next voxel is empty, or end of the row, increment the 'ind_panel';
+                    % otherwise not, as the voxels share the same panel at the interface.
+                    if (ll_next_one == -1)
+                        ind_panel = ind_panel + 1;
+                    end
+                end
+            end
+        end
+    end
+    num_panel_x=max(max(voxel2panel_x));
+
+    % Numbering panels along y direction
+    %
+    % This is twisted, as the panels along the y direction follow the y,z,x voxel order
+    % which is different from the natural x,y,z order
+    
+    % counter for all panels along y
+    ind_panel = 1;
+    voxel2panel_y=zeros(num_nonair_cube,2); % 1 front panel, 2 back panel
+    for ll=1:L
+        for nn=1:N
+          for mm=1:M  
+                % if non-empty voxel 
+                if (boolean_tens(ll,mm,nn) ~=0)
+                    % check if next voxel along y (as we are scanning along y)
+                    % is empty or not
+                    mm_next_one = mm + 1;
+                    % if this was the last voxel in the row, there is no next one
+                    if (mm_next_one > M) 
+                        mm_next_one = -1;
+                    % now we know it is not the last one, so we can safely access
+                    % the next one and test it for emptyness
+                    elseif (boolean_tens(ll, mm_next_one, nn) ==0)
+                        mm_next_one = -1;
+                    end
+
+                    % assign panels to voxel
+                    %
+                    % retrieve the voxel number from the boolean_tens matrix, that has
+                    % stored the non-empty voxel sequence number x,y,z 
+                    vox_num = boolean_tens(ll,mm,nn);
+                    % and use it for assigning the right panel indexes
+                    voxel2panel_y(vox_num,1)=ind_panel; % left panel
+                    ind_panel=ind_panel+1;
+                    voxel2panel_y(vox_num,2)=ind_panel; % right panel
+                    
+                    % if next voxel is empty, or end of the row, increment the 'ind_panel';
+                    % otherwise not, as the voxels share the same panel at the interface.
+                    if (mm_next_one == -1)
+                        ind_panel = ind_panel + 1;
+                    end
+                end
+            end
+        end
+    end
+    num_panel_y=max(max(voxel2panel_y));
+  
+    % This is twisted, as the panels along the z direction follow the z,x,y voxel order
+    % which is different from the natural x,y,z order
+    
+    % counter for all panels along z
+    ind_panel = 1;
+    voxel2panel_z=zeros(num_nonair_cube,2); % 1 front panel, 2 back panel
+    for mm=1:M  
+        for ll=1:L
+            for nn=1:N
+                % if non-empty voxel 
+                if (boolean_tens(ll,mm,nn) ~=0)
+                    % check if next voxel along z (as we are scanning along z)
+                    % is empty or not
+                    nn_next_one = nn + 1;
+                    % if this was the last voxel in the row, there is no next one
+                    if (nn_next_one > N) 
+                        nn_next_one = -1;
+                    % now we know it is not the last one, so we can safely access
+                    % the next one and test it for emptyness
+                    elseif (boolean_tens(ll, mm, nn_next_one) ==0)
+                        nn_next_one = -1;
+                    end
+
+                    % assign panels to voxel
+                    %
+                    % retrieve the voxel number from the boolean_tens matrix, that has
+                    % stored the non-empty voxel sequence number x,y,z 
+                    vox_num = boolean_tens(ll,mm,nn);
+                    % and use it for assigning the right panel indexes
+                    voxel2panel_z(vox_num,1)=ind_panel; % left panel
+                    ind_panel=ind_panel+1;
+                    voxel2panel_z(vox_num,2)=ind_panel; % right panel
+                    
+                    % if next voxel is empty, or end of the row, increment the 'ind_panel';
+                    % otherwise not, as the voxels share the same panel at the interface.
+                    if (nn_next_one == -1)
+                        ind_panel = ind_panel + 1;
+                    end
+                end
+            end
+        end
+    end
+    num_panel_z=max(max(voxel2panel_z));
+  
+    %
+    % here we continue as with the 'old' Graph-based routine
+    %    
+    
+    voxel2panel_y = num_panel_x + voxel2panel_y;
+    
+    voxel2panel_z = (num_panel_x+num_panel_y) + voxel2panel_z;
+    
+    all_panels_ids=[voxel2panel_x; voxel2panel_y; voxel2panel_z];
+    
+    if(fl_profile == 1); disp(['Time for indexing panels ::: ', num2str(toc)]); end;
+    
+    % 8) forming Ae matrix
+    
+    tic
+    num_nodes=num_panel_x+num_panel_y+num_panel_z;
+    
+    % enter +1, leaves -1; first entry for leaving, second entry for entering
+    const_lin=1/2;
+    %const_lin=dx/2;
+    
+    sp_mat_inds=zeros(16*num_nonair_cube,3);
+    sp_mat_inds_only_leaving_currs=zeros(8*num_nonair_cube,3);
+    for kk=1:3*num_nonair_cube % pertinent to Jx, Jy, and Jz
+        sp_mat_inds(kk,1:3)= [all_panels_ids(kk,1) kk -1];
+        sp_mat_inds(3*num_nonair_cube+kk,1:3)= [all_panels_ids(kk,2) kk 1];
+        % the following is added for current vis.
+        sp_mat_inds_only_leaving_currs(kk,1:3)= [all_panels_ids(kk,1) kk -1];
+    end
+    
+    dum=1;
+    for kk=3*num_nonair_cube+1:4*num_nonair_cube % pertinent to Jfx
+        sp_mat_inds(6*num_nonair_cube+dum,1:3)= [all_panels_ids(dum,1) kk const_lin];
+        sp_mat_inds(7*num_nonair_cube+dum,1:3)= [all_panels_ids(dum,2) kk const_lin];
+        % the following is added for current vis.
+        sp_mat_inds_only_leaving_currs(3*num_nonair_cube+dum,1:3)= [all_panels_ids(dum,1) kk const_lin];
+        dum=dum+1;
+    end
+    
+    dum=1;
+    for kk=3*num_nonair_cube+1:4*num_nonair_cube % pertinent to Jfy
+        sp_mat_inds(8*num_nonair_cube+dum,1:3)= [all_panels_ids(num_nonair_cube+dum,1) kk -const_lin];
+        sp_mat_inds(9*num_nonair_cube+dum,1:3)= [all_panels_ids(num_nonair_cube+dum,2) kk -const_lin];
+        % the following is added for current vis.
+        sp_mat_inds_only_leaving_currs(4*num_nonair_cube+dum,1:3)= [all_panels_ids(num_nonair_cube+dum,1) kk -const_lin];
+        dum=dum+1;
+    end
+    
+    % for space diagonal currents
+    dum=1;
+    for kk=4*num_nonair_cube+1:5*num_nonair_cube % pertinent to Jsx
+        sp_mat_inds(10*num_nonair_cube+dum,1:3)= [all_panels_ids(dum,1) kk const_lin];
+        sp_mat_inds(11*num_nonair_cube+dum,1:3)= [all_panels_ids(dum,2) kk const_lin];
+        % the following is added for current vis.
+        sp_mat_inds_only_leaving_currs(5*num_nonair_cube+dum,1:3)= [all_panels_ids(dum,1) kk const_lin];
+        dum=dum+1;
+    end
+    
+    dum=1;
+    for kk=4*num_nonair_cube+1:5*num_nonair_cube % pertinent to Jsy
+        sp_mat_inds(12*num_nonair_cube+dum,1:3)= [all_panels_ids(num_nonair_cube+dum,1) kk const_lin];
+        sp_mat_inds(13*num_nonair_cube+dum,1:3)= [all_panels_ids(num_nonair_cube+dum,2) kk const_lin];
+        % the following is added for current vis.
+        sp_mat_inds_only_leaving_currs(6*num_nonair_cube+dum,1:3)= [all_panels_ids(num_nonair_cube+dum,1) kk const_lin];
+        dum=dum+1;
+    end
+    
+    dum=1;
+    for kk=4*num_nonair_cube+1:5*num_nonair_cube % pertinent to Jsz
+        sp_mat_inds(14*num_nonair_cube+dum,1:3)= [all_panels_ids(2*num_nonair_cube+dum,1) kk -2*const_lin];
+        sp_mat_inds(15*num_nonair_cube+dum,1:3)= [all_panels_ids(2*num_nonair_cube+dum,2) kk -2*const_lin];
+        % the following is added for current vis.
+        sp_mat_inds_only_leaving_currs(7*num_nonair_cube+dum,1:3)= [all_panels_ids(2*num_nonair_cube+dum,1) kk -2*const_lin];
+        dum=dum+1;
+    end
+    
+    %Ae=sparse(sp_mat_inds(:,1),sp_mat_inds(:,2),sp_mat_inds(:,3));
+    Ae=sparse(sp_mat_inds(:,1),sp_mat_inds(:,2),sp_mat_inds(:,3),num_nodes,5*num_nonair_cube);
+    
+    infomem1 = whos('Ae');
+    memestimated = (infomem1.bytes)/(1024*1024);
+    disp(['Memory for Ae matrix (MB)::' , num2str(memestimated)]);
+    
+    % Additional data structure for visualization of currents
+    
+    % We need two data structures:
+    % (1) Ae matrix for leaving currents
+    Ae_only_leaving=sparse(sp_mat_inds_only_leaving_currs(:,1),sp_mat_inds_only_leaving_currs(:,2),sp_mat_inds_only_leaving_currs(:,3),num_nodes,5*num_nonair_cube);
+    
+    % (2) Ae matrix for entering currents to boundary nodes
+    % Finding the nodes to which current enters
+    dum_vect=zeros(size(Ae,2),1);
+    dum_vect(1:size(Ae,2)/5*3)=1;
+    dum_res=Ae*dum_vect; % ids of boundary nodes -1:exiting, +1:entering
+    
+    nodes_only_curr_enter=find(dum_res == 1);
+    sp_mat_dum=Ae(nodes_only_curr_enter,:);
+    [rows,cols,vals] = find(sp_mat_dum);
+    for kk=1:length(rows) %correct rows
+        rows(kk)=nodes_only_curr_enter(rows(kk));
+    end
+    
+    Ae_only_entering_bndry=sparse(rows,cols,vals,num_nodes,5*num_nonair_cube);
+    
+    if(fl_profile == 1); disp(['Time for generating sparse Ae matrix ::: ', num2str(toc)]);end;
+    
+    % The following is for visualization!!!
+    % retrieving the centers of non-air voxels
+    tic
+    dum=1;
+    xy_curr_ids_locs=zeros(3*num_nonair_cube,3);
+    for mm=1:N
+        for ll=1:M
+            for kk=1:L
+                if (grid_intcon(kk,ll,mm,1) ~=0 && grid_intcon(kk,ll,mm,2) ~=0 && ...
+                        grid_intcon(kk,ll,mm,3) ~=0 ) % This is dangerous!
+                    coor_tmp=squeeze(grid_intcon(kk,ll,mm,1:3));
+                    xy_curr_ids_locs(dum,1:3)=coor_tmp;
+                    xy_curr_ids_locs(num_nonair_cube+dum,1:3)=coor_tmp;
+                    xy_curr_ids_locs(2*num_nonair_cube+dum,1:3)=coor_tmp;
+                    dum=dum+1;
+                end
+            end
+        end
+    end
+    if(fl_profile == 1); disp(['Time for retrieving centers of non-air voxels ::: ', num2str(toc)]);end;
+    
+    
+    % finding locations of panels enclosing x and y currents
+    tic
+    all_panel_locs=zeros(3*num_nonair_cube,6);
+    for kk=1:num_nonair_cube
+        %Jx currents
+        all_panel_locs(kk,1:3)=[xy_curr_ids_locs(kk,1)-dx*0.5 xy_curr_ids_locs(kk,2) xy_curr_ids_locs(kk,3)];
+        all_panel_locs(kk,4:6)=[xy_curr_ids_locs(kk,1)+dx*0.5 xy_curr_ids_locs(kk,2) xy_curr_ids_locs(kk,3)];
+        %Jy currents
+        ind=num_nonair_cube+kk;
+        all_panel_locs(ind,1:3)=[xy_curr_ids_locs(ind,1) xy_curr_ids_locs(ind,2)-dx*0.5 xy_curr_ids_locs(ind,3)];
+        all_panel_locs(ind,4:6)=[xy_curr_ids_locs(ind,1) xy_curr_ids_locs(ind,2)+dx*0.5 xy_curr_ids_locs(ind,3)];
+        %Jz currents
+        ind2=2*num_nonair_cube+kk;
+        all_panel_locs(ind2,1:3)=[xy_curr_ids_locs(ind2,1) xy_curr_ids_locs(ind2,2) xy_curr_ids_locs(ind2,3)-dx*0.5];
+        all_panel_locs(ind2,4:6)=[xy_curr_ids_locs(ind2,1) xy_curr_ids_locs(ind2,2) xy_curr_ids_locs(ind2,3)+dx*0.5];
+    end
+    if(fl_profile == 1); disp(['Time for finding locations of surface panels ::: ', num2str(toc)]); end
+    
+
+    
+    fl_vis_numbering=0;
+    if (fl_vis_numbering == 1)
+        figure;
+        set(gca,'FontSize',24);
+        xd = grid_intcon(:,:,:,1);yd = grid_intcon(:,:,:,2);zd = grid_intcon(:,:,:,3);
+        h=plot3(xd(:), yd(:), zd(:), 'r*');
+        set(h,'MarkerSize',10); xlabel('x'); ylabel('y'); zlabel('z');set(gca,'FontSize',24);
+        hold on
+        for mm=1:N
+            for ll=1:M
+                for kk=1:L
+                    coor_tmp=squeeze(grid_intcon(kk,ll,mm,1:3));
+                    %h=text(coor_tmp(1),coor_tmp(2),coor_tmp(3),num2str(numbering_x_y_z(kk,ll,mm,1))); % x numbering
+                    h=text(coor_tmp(1),coor_tmp(2),coor_tmp(3),num2str(numbering_x_y_z(kk,ll,mm,2))); % y numbering
+                    %h=text(coor_tmp(1),coor_tmp(2),coor_tmp(3),num2str(numbering_x_y_z(kk,ll,mm,3))); % z numbering
+                    set(h,'FontSize',24)
+                    
+                    
+                end
+            end
+        end
+        xlabel('x');ylabel('y'); set(gca,'FontSize',24);
+        grid on
+        axis tight
+        grid on
+        view(2)
+    end
+
+    disp('Done... Generating Ae matrix by inspection...')
+    disp('-----------------------------------------------------')
+    
+elseif (fl_meth_comp == 2) % graph based fast Ae generation
     
     disp('-----------------------------------------------------')
     disp('Generating Ae matrix with graphs...')
@@ -134,21 +469,27 @@ if (fl_meth_comp == 2) % graph based fast Ae generation
     
     %2e) mapping from y and z numbering to x numbering
     
+    tic
     dum=0;
     map_from_y2x_numbering=zeros(num_nonair_cube,1);
     map_from_z2x_numbering=zeros(num_nonair_cube,1);
-    for kk=1:L
-        for mm=1:N
-            for ll=1:M
-                if (boolean_tens(kk,ll,mm) ~=0)
-                    dum=dum+1;
-                    map_from_y2x_numbering(dum)=numbering_x_y_z(y_num_vect(dum,1),y_num_vect(dum,2),y_num_vect(dum,3),1);
-                    map_from_z2x_numbering(dum)=numbering_x_y_z(z_num_vect(dum,1),z_num_vect(dum,2),z_num_vect(dum,3),1);
-                end
-            end
-        end
+    %for kk=1:L
+    %    for mm=1:N
+    %        for ll=1:M
+    %            if (boolean_tens(kk,ll,mm) ~=0)
+    %                dum=dum+1;
+    %                map_from_y2x_numbering(dum)=numbering_x_y_z(y_num_vect(dum,1),y_num_vect(dum,2),y_num_vect(dum,3),1);
+    %                map_from_z2x_numbering(dum)=numbering_x_y_z(z_num_vect(dum,1),z_num_vect(dum,2),z_num_vect(dum,3),1);
+    %             end
+    %        end
+    %    end
+    %end
+    % faster code 
+    for dum=1:num_nonair_cube
+        map_from_y2x_numbering(dum)=numbering_x_y_z(y_num_vect(dum,1),y_num_vect(dum,2),y_num_vect(dum,3),1);
+        map_from_z2x_numbering(dum)=numbering_x_y_z(z_num_vect(dum,1),z_num_vect(dum,2),z_num_vect(dum,3),1);
     end
-    
+   
     if(fl_profile == 1); disp(['Time for getting numbering matrices ::: ', num2str(toc)]);end
     clear y_num_vect z_num_vect
     
