@@ -4,10 +4,10 @@ function  I = volume_volume(W,X,Y,Z,Xp,Yp,Zp,k0,r_m,r_n,dx,volume_ker)
 
 %% change of variables
 
-% Jacobean
+% Jacobian
 J = (dx/2)^6;
 
-% sampling points for the Green kernel
+% sampling points for the Green kernel after change of variable
 Xg  = r_m(1) + dx/2*X;
 Yg  = r_m(2) + dx/2*Y;
 Zg  = r_m(3) + dx/2*Z;
@@ -32,8 +32,8 @@ switch volume_ker
     case 4
         % smoothed kernel
         ker1 = 1/4/pi * ( exp(-1j*k0*R) - 1.0 ) ./R;
-        % apply l'hopital at the points where the kernel's evaluation is
-        % 0/0
+        
+        % apply l'hopital at the points where the kernel's evaluation is 0/0
         ker1(isnan(abs(ker1))) = -1j*k0 /4/pi;
         
         ker2 = k0^2/8/pi * R;
@@ -95,7 +95,7 @@ TB = Zpb.*Zt;
 K(10) = sum(W .* TB .* ker) * J;
 
 
-% calculate the system's kernels
+% calculate the system's integrals
 I(1) =  K(1);
 I(2) =  K(2);
 I(3) = -K(4);

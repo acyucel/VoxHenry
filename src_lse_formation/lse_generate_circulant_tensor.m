@@ -1,9 +1,9 @@
 function [fN_all,st_sparse_precon] = lse_generate_circulant_tensor(dx,ko,L,M,N,fl_no_fft)
 
-% Code addition for running subroutine seperately
+% % Code addition for running subroutine seperately
 % clc; close all; clear all
 % freq = 3e0; dx = 0.1e-1; EMconstants;
-% L=3; M=3; N=3
+% L=5; M=5; N=5
 % fl_comp_fullmat = 1;
 
 fl_oneoverr_kernel=1;
@@ -17,11 +17,14 @@ end
 % 2) Computing interactions with Ioannis code
 % 2a) Specify the number of integration points - far, near
 
-% number of 1D points for far volume-volume integrals
+% number of 1D points for far volume-volume integrals 
+% (the total points in the 6D quadrature will be Np_1D_far_V^6)
 Np_1D_far_V    = 3;
 % number of 1D points for medium volume-volume integrals
 Np_1D_medium_V = 5;
-% number of 1D points for near surface-surface and singular integrals 
+% number of 1D points for near surface-surface and singular integrals
+% you can try to reduce the number of points to around 10, however for some
+% kernels 12 points are required for convergence
 Np_1D_near_S   = 12;
 
 % Set region of medium distances cells for higher order quadrature
@@ -50,7 +53,6 @@ parfor mx = 1:L
             % centre of the observation voxel
             r_m = ((m-1) .* d)';
 
-            %G_mn(mx,my,mz,:) = volume_volume(W6D,X,Y,Z,Xp,Yp,Zp,ko_grfn,r_m,r_n,dx);
             G_mn(mx,my,mz,:) = volume_volume(W6D,X,Y,Z,Xp,Yp,Zp,ko_grfn,r_m,r_n,dx,1);
 
         end
@@ -91,7 +93,7 @@ disp(['Time for computing medium interactions ::: ',num2str(toc)])
 % 2e) Compute interaction between near distance cells - the surface-surface integrals
 
 Np = Np_1D_near_S;
-% 4D Clenshaw - Curtis points and weights
+% 4D Gauss Legendre points and weights
 [W4D,A,B,C,D] = weights_points(Np,4);
 
 Ls = 2;Ms = 2;Ns = 2;
@@ -100,7 +102,8 @@ if L <2; Ls = 1; end
 if M <2; Ms = 1; end
 if N <2; Ns = 1;end
 
-tic
+% calculate the constant coefficinets in front of the surface-surface
+% integrals
 [I1_co, I2_co, I3_co, I4_co]  = surface_surface_coeff(dx,ko_grfn);
 
 parfor mx = 1:Ls
@@ -111,25 +114,20 @@ parfor mx = 1:Ls
             % centre of the observation voxel
             r_m = ((m-1) .* d)';
                         
-            %%%[I1,I2,I3,I4] = surface_surface_kernels(W,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx);
-            %%%
-            %%% multiply the values by the constant coefficients
-            %%% and return the sum over the 36 faces
-            %%G_mn(mx,my,mz,:) = surface_surface_coeff(I1,I2,I3,I4,dx,ko_grfn); 
-            
-            % uncomment the following due to selection of the calculation
-            % method
             
             % 1) calculate near interactions with singularity subtraction
-            % method. VV for the smoothed kernel, SS for 1/R, SS for R/2
+            % method. volume-volume for the smoothed kernel, surface-surface for 1/R, surface-surface for R
             
+            % non-singular, smooth kernel:  KER = 1/4/pi * ( exp(-1j*k0*R) - 1.0 ) ./R + k0^2/8/pi * R;
             I_V_smooth = volume_volume(W6D,X,Y,Z,Xp,Yp,Zp,ko_grfn,r_m,r_n,dx,4);
-
+            
+            % singular kernel: KER =  1/(4*pi*R) with surface-surface formulas
             I_S2 = surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,2);
-            %[T,I_S2] = evalc('surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,2);');
-
+            
+            % singular kernel: KER = -ko^2/(8*pi)*R with surface-surface formulas
             I_S3 = surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,3);
-
+            
+            % take the sum of them according to eq. 17 of the report
             G_mn(mx,my,mz,:) = I_V_smooth + I_S2 + I_S3;
             
             % 2) calculate near interactions with VV to SS formulas for G

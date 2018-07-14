@@ -2,6 +2,7 @@ function f = kernels(X,Y,Z,Xp,Yp,Zp,k0,dx,r_m,r_n,n,l,ker_type,volume_ker)
 
 %% calculates the surface-surface integrals for the 4 kernels for each testing and basis functions combination 
 
+% chose one of the four surface-surface kernels (rows of the tables 1,2,3)
 switch ker_type
     case 1
         %% 1st surface-surface kernel
@@ -39,14 +40,17 @@ switch ker_type
         end
         
         switch volume_ker
+            % reduced kernels from G
             case 1
                 R = sqrt((X-Xp).^2+(Y-Yp).^2+(Z-Zp).^2);
                 G  = 1/4/pi * exp(-1i*k0*R) ./ R;
                 G0 = 1/4/pi ./ R;
                 f = fm.*fn .* (G-G0) / (1j*k0)^2;
+            % reduced kernels from 1/R  
             case 2
                 R = sqrt((X-Xp).^2+(Y-Yp).^2+(Z-Zp).^2);
                 f = fm.*fn .* R/2 /4/pi;
+            % reduced kernels from R   
             case 3
                 R = sqrt((X-Xp).^2+(Y-Yp).^2+(Z-Zp).^2);
                 f = fm.*fn .* R.^3/12 *(-k0^2/8/pi);
@@ -80,6 +84,7 @@ switch ker_type
             
         
         switch volume_ker
+            % reduced kernels from G
             case 1
                 % Green
                 R = sqrt((X-Xp).^2+(Y-Yp).^2+(Z-Zp).^2);
@@ -99,6 +104,8 @@ switch ker_type
                 q = n(1)*hh(:,1) + n(2)*hh(:,2) + n(3)*hh(:,3);
 
                 f = fn .* q / (1j*k0)^2;
+            
+            % reduced kernels from 1/R     
             case 2
                 R = sqrt((X-Xp).^2+(Y-Yp).^2+(Z-Zp).^2);
                 
@@ -109,6 +116,8 @@ switch ker_type
                 q = n(1)*ff(:,1) + n(2)*ff(:,2) + n(3)*ff(:,3);
                 
                 f = fn .* q / 4/pi;
+            
+            % reduced kernels from R 
             case 3
                 R = sqrt((X-Xp).^2+(Y-Yp).^2+(Z-Zp).^2);
                 
@@ -148,6 +157,7 @@ switch ker_type
         end
         
         switch volume_ker
+            % reduced kernels from G
             case 1
                 % Green
                 R = sqrt((X-Xp).^2+(Y-Yp).^2+(Z-Zp).^2);
@@ -169,6 +179,8 @@ switch ker_type
                 q = n(1)*hh(:,1) + n(2)*hh(:,2) + n(3)*hh(:,3);
 
                 f = fm .* q / (1j*k0)^2;
+                
+            % reduced kernels from 1/R 
             case 2
                  R = sqrt((X-Xp).^2+(Y-Yp).^2+(Z-Zp).^2);
                 
@@ -179,6 +191,8 @@ switch ker_type
                 q = n(1)*ff(:,1) + n(2)*ff(:,2) + n(3)*ff(:,3);
                 
                 f = fm .* q / 4/pi;
+            
+            % reduced kernels from R 
             case 3
                 
                 R = sqrt((X-Xp).^2+(Y-Yp).^2+(Z-Zp).^2);
@@ -197,6 +211,7 @@ switch ker_type
     case 4
         %% 4th surface-surface kernel
         switch volume_ker
+            % reduced kernels from G
             case 1
                 R = sqrt((X-Xp).^2+(Y-Yp).^2+(Z-Zp).^2);
 
@@ -204,9 +219,13 @@ switch ker_type
                 G0 = 1/4/pi./ R;
 
                 f = ( (G-G0)/(1j*k0)^2 - R/8/pi ) / (1j*k0)^2 ;
+                
+            % reduced kernels from 1/R 
             case 2
                 R = sqrt((X-Xp).^2+(Y-Yp).^2+(Z-Zp).^2);
                 f = R.^3/24 / 4/pi;
+            
+            % reduced kernels from R 
             case 3
                 R = sqrt((X-Xp).^2+(Y-Yp).^2+(Z-Zp).^2);
                 f = R.^5/360 *(-k0^2/8/pi);
