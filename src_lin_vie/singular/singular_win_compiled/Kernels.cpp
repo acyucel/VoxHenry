@@ -391,7 +391,7 @@ complex<double> Kernel  ( double rp[], double rq[], Geometry_triangle &geom)
 	double Nq;
 
 	double f_g;
-	double np[3], nq[3]; // normales
+	double np[3], nq[3]; // normals
 	complex<double> Green;
     complex<double> K;
     
