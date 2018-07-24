@@ -6,6 +6,13 @@ function [fN_all,st_sparse_precon] = lse_generate_circulant_tensor(dx,ko,L,M,N,f
 % L=3; M=3; N=3
 % fl_comp_fullmat = 1;
 
+% if 'lse_enhanced_parallel' == 1, unroll the for loops to improve
+% parallelization for near interactions calculation
+lse_enhanced_parallel = 1;
+% if 'lse_exploit_symmetry' == 0, use the original brute force way to compute G_mn terms
+% if 'lse_exploit_symmetry' == 1, exploit symmetry when calculating G_mn terms
+lse_exploit_symmetry = 1;
+
 fl_oneoverr_kernel=1;
 if(fl_oneoverr_kernel == 1)
     ko_grfn=6.287535065855046e-08; % ko of 3Hz
@@ -72,21 +79,82 @@ if L <n_mediumL; n_mediumL = L; end
 if M <n_mediumM; n_mediumM = M; end
 if N <n_mediumN; n_mediumN = N; end
 
-tic
-parfor mx = 1:n_mediumL
-    for my = 1:n_mediumM
-        for mz = 1:n_mediumN
-            
-            m = [mx,my,mz];
-            % centre of the observation voxel
-            r_m = ((m-1) .* d)';
-            
-            G_mn(mx,my,mz,:) = volume_volume(W6D,X,Y,Z,Xp,Yp,Zp,ko_grfn,r_m,r_n,dx,1);
-            
+% if should not exploit symmetry, or if not a cubic volume, use standard method
+if(lse_exploit_symmetry == 0 || n_mediumL != n_mediumM || n_mediumL != n_mediumN ) 
+    tic
+    parfor mx = 1:n_mediumL
+        for my = 1:n_mediumM
+            for mz = 1:n_mediumN
+                
+                m = [mx,my,mz];
+                % centre of the observation voxel
+                r_m = ((m-1) .* d)';
+                
+                G_mn(mx,my,mz,:) = volume_volume(W6D,X,Y,Z,Xp,Yp,Zp,ko_grfn,r_m,r_n,dx,1);
+                
+            end
         end
     end
+    disp(['Time for computing medium interactions ::: ',num2str(toc)])
+else
+    % test to compute medium interactions exploiting symmetry
+    % remark: volume must be cubic, i.e. 'mediumL' = 'mediumM' = 'mediumN'
+    tic
+    G_mn_test = zeros(n_mediumL,n_mediumL,n_mediumL,10);
+    for mx = 1:n_mediumL
+        for my = 1:n_mediumM
+            % could further exploit symmetry
+            for mz = 1:n_mediumN
+            %for mz = 1:my
+                
+                m = [mx,my,mz];
+                % centre of the observation voxel
+                r_m = ((m-1) .* d)';
+                
+                K = volume_volume_sym(W6D,X,Y,Z,Xp,Yp,Zp,ko_grfn,r_m,r_n,dx,1,1);
+                
+                % this is only half (1/8 of complete angle around the x-axis);
+                % must copy to the other half, to cover the full quadrant
+                
+                % Gx,x
+                G_mn_test(mx,my,mz,1) = K(1);
+                % G2D,x
+                G_mn_test(mx,my,mz,2) = -K(2);
+                % G2D,y
+                G_mn_test(mz,mx,my,3) = K(2);
+                % Gx,2D
+                G_mn_test(mx,my,mz,4) = K(2);
+                % Gy,2D
+                G_mn_test(mz,mx,my,5) = -K(2);
+                % G2D,2D
+                % linear(x)-linear(x') part
+                G_mn_test(mx,my,mz,6) = G_mn_test(mx,my,mz,6) + K(3);
+                % linear(y)-linear(y') part
+                G_mn_test(mz,mx,my,6) = G_mn_test(mz,mx,my,6) + K(3);
+                % Gz,3D
+                G_mn_test(my,mz,mx,7) = -2*K(2);
+                % G3D,z
+                G_mn_test(my,mz,mx,8) = 2*K(2);
+                % G2D,3D
+                % linear(x)-linear(x') part
+                G_mn_test(mx,my,mz,9) = G_mn_test(mx,my,mz,9) + K(3);
+                % linear(y)-linear(y') part
+                G_mn_test(mz,mx,my,9) = G_mn_test(mz,mx,my,9) - K(3);
+                % G3D,3D
+                % linear(x)-linear(x') part
+                G_mn_test(mx,my,mz,10) = G_mn_test(mx,my,mz,10) + K(3);
+                % linear(y)-linear(y') part
+                G_mn_test(mz,mx,my,10) = G_mn_test(mz,mx,my,10) + K(3);
+                % linear(z)-linear(z') part
+                G_mn_test(my,mz,mx,10) = G_mn_test(my,mz,mx,10) + 4*K(3);
+                
+            end
+        end
+    end
+    disp(['Time for computing medium interactions exploiting symmetry ::: ',num2str(toc)])
+    % delete following line and use G_mn directly when fully tested
+    G_mn(1:n_mediumL,1:n_mediumL,1:n_mediumL,:) = G_mn_test(1:n_mediumL,1:n_mediumL,1:n_mediumL,:);
 end
-disp(['Time for computing medium interactions ::: ',num2str(toc)])
 
 % 2e) Compute interaction between near distance cells - the surface-surface integrals
 
@@ -103,41 +171,112 @@ if N <2; Ns = 1;end
 tic
 [I1_co, I2_co, I3_co, I4_co]  = surface_surface_coeff(dx,ko_grfn);
 
-parfor mx = 1:Ls
-    for my = 1:Ms
-        for mz = 1:Ns
+if (lse_enhanced_parallel == 1)
+    % Parallelization requires the maximum number of threads working in
+    % parallel. So if we use nested 'for' loops, only the external
+    % one can be parallelized, and this is the ultimate limit of 
+    % number of active threads. If the external for loop has less
+    % iterations than the number of threads, there will be processors
+    % sitting idle. The solution is to serialize the computation in
+    % a single (parallel) for loop.
+    % Note that the ultimate limit here is Ls * Ms * Ns number of
+    % threads. If Ls, Ms, Ns are equal to 2, the limit is then 8 threads.
+    % We can further enhance the parallelization for more threads
+    % by splitting the job for calculating 'I_V_smooth', 'I_S2' and 'I_S3'
+    % in parallel as well.
 
-            m = [mx,my,mz];
-            % centre of the observation voxel
-            r_m = ((m-1) .* d)';
-                        
-            %%%[I1,I2,I3,I4] = surface_surface_kernels(W,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx);
-            %%%
-            %%% multiply the values by the constant coefficients
-            %%% and return the sum over the 36 faces
-            %%G_mn(mx,my,mz,:) = surface_surface_coeff(I1,I2,I3,I4,dx,ko_grfn); 
-            
-            % uncomment the following due to selection of the calculation
-            % method
-            
-            % 1) calculate near interactions with singularity subtraction
-            % method. VV for the smoothed kernel, SS for 1/R, SS for R/2
-            
-            I_V_smooth = volume_volume(W6D,X,Y,Z,Xp,Yp,Zp,ko_grfn,r_m,r_n,dx,4);
-
-            I_S2 = surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,2);
-            %[T,I_S2] = evalc('surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,2);');
-
-            I_S3 = surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,3);
-
-            G_mn(mx,my,mz,:) = I_V_smooth + I_S2 + I_S3;
-            
-            % 2) calculate near interactions with VV to SS formulas for G
-            %G_mn(mx,my,mz,:) = surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,1);
-  
-                       
-       end
+    % let's get the indexes of the voxels that we need to consider
+    % for near interactions
+    near_idx = zeros(Ls * Ms * Ns,1);
+    dum = 1;
+    for mx = 1:Ls
+        for my = 1:Ms
+            for mz = 1:Ns
+                near_idx(dum) = sub2ind(size(G_mn), mx, my, mz);
+                dum = dum + 1;
+            end
+        end
     end
+    % now let's create a temporary storage for the G_mn near elements.
+    % this is needed as MatLab does not like the (apparently) random 
+    % insertion of elements in G_mn. We know that this is instead 
+    % not an issue (no dependances between the threads),
+    % but need to work it around here.
+    G_mn_tmp = zeros(Ls * Ms * Ns, 10);
+    parfor dum = 1:size(near_idx,1)
+
+                [mx,my,mz] = ind2sub(size(G_mn),near_idx(dum));
+                m = [mx,my,mz];
+                % centre of the observation voxel
+                r_m = ((m-1) .* d)';
+
+                %%%[I1,I2,I3,I4] = surface_surface_kernels(W,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx);
+                %%%
+                %%% multiply the values by the constant coefficients
+                %%% and return the sum over the 36 faces
+                %%G_mn(mx,my,mz,:) = surface_surface_coeff(I1,I2,I3,I4,dx,ko_grfn); 
+
+                % uncomment the following due to selection of the calculation
+                % method
+
+                % 1) calculate near interactions with singularity subtraction
+                % method. VV for the smoothed kernel, SS for 1/R, SS for R/2
+                I_V_smooth = volume_volume(W6D,X,Y,Z,Xp,Yp,Zp,ko_grfn,r_m,r_n,dx,4);
+
+                I_S2 = surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,2);
+                %[T,I_S2] = evalc('surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,2);');
+
+                I_S3 = surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,3);
+
+                G_mn_tmp(dum,:) = I_V_smooth + I_S2 + I_S3;
+
+                % 2) calculate near interactions with VV to SS formulas for G
+                %G_mn(mx,my,mz,:) = surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,1);
+    end
+    % and now properly insert the near G_mn elements in the 'G_mn' tensor. 
+    for dum = 1:size(near_idx,1)
+                [mx,my,mz] = ind2sub(size(G_mn),near_idx(dum));
+                G_mn(mx,my,mz,:) = G_mn_tmp(dum,:);
+    end
+% old code, loosely parallelized    
+else
+    parfor mx = 1:Ls
+        for my = 1:Ms
+            for mz = 1:Ns
+
+                m = [mx,my,mz];
+                % centre of the observation voxel
+                r_m = ((m-1) .* d)';
+
+                %%%[I1,I2,I3,I4] = surface_surface_kernels(W,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx);
+                %%%
+                %%% multiply the values by the constant coefficients
+                %%% and return the sum over the 36 faces
+                %%G_mn(mx,my,mz,:) = surface_surface_coeff(I1,I2,I3,I4,dx,ko_grfn); 
+
+                % uncomment the following due to selection of the calculation
+                % method
+
+                % 1) calculate near interactions with singularity subtraction
+                % method. VV for the smoothed kernel, SS for 1/R, SS for R/2
+
+                I_V_smooth = volume_volume(W6D,X,Y,Z,Xp,Yp,Zp,ko_grfn,r_m,r_n,dx,4);
+
+                I_S2 = surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,2);
+                %[T,I_S2] = evalc('surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,2);');
+
+                I_S3 = surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,3);
+
+                G_mn(mx,my,mz,:) = I_V_smooth + I_S2 + I_S3;
+
+                % 2) calculate near interactions with VV to SS formulas for G
+                %G_mn(mx,my,mz,:) = surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,1);
+
+
+           end
+        end
+    end
+    
 end
 
 disp(['Time for computing near interactions ::: ',num2str(toc)])

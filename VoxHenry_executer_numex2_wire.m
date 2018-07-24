@@ -17,7 +17,7 @@ num_freq = length(freq);
 er = 0;  % epsilon_r of conductors
 se=5.8e7; % conductivity of conductors
 inner_it = 100; outer_it = 10; tol=1e-12; % iterative solver inputs
-Res = 0.5e-6; % voxel size (deltax)
+Res = 1.0e-6; % voxel size (deltax)
 fl_check_domain=0; % set to 1 for only plotting the structure (no simulation)
 fl_check_geo=0; % set to 1 for only plotting the domain (no simulation)
 fl_check_ports=0; % set to 1 for only plotting the port nodes (no simulation)
@@ -384,6 +384,6 @@ save('results_numex2_wire/data_curr_plot.mat', 'x', 'Ae_only_leaving','Ae_only_e
 disp(['Done... Saving data'])
 disp('-----------------------------------------------------')
 
-
+% Enrico debug - temporary disable post-processing (images)
 post_processor_numex2
 

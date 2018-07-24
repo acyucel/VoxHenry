@@ -280,7 +280,8 @@ if (cut_on == 1)
     view(130,20)
     
     xlabel('x');ylabel('y');zlabel('z');
-    set(gcf,'renderer','openGL');
+    % if next line is commented out, we rely on the automatic choice of the renderer (see 'renderermode')
+    %set(gcf,'renderer','openGL');
     
 else
     FigHandle = figure;
@@ -322,8 +323,9 @@ else
     %view(130,20)
     view(-45,20)
     xlabel('x');ylabel('y');zlabel('z');
+    % if next line(s) is commented out, we rely on the automatic choice of the renderer (see 'renderermode')
     %set(gcf,'Renderer','opengl');
-    set(gcf,'Renderer','zbuffer')
+    %set(gcf,'Renderer','zbuffer')
     set(gca,'FontSize',24); set(gca,'FontName','Times New Roman');
     %colorbar off
     colorbar

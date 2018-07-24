@@ -4,6 +4,7 @@ global A_inv LL UU PP QQ RR Sch_sparse slct_decomp_sch fl_cholmod
 %slct_decomp_sch='ldlt_decomp'; %'chol_decomp','no_decomp','ldlt_decomp','chol_decomp'
 
 slct_decomp_sch='ldlt_decomp'; %'no_decomp','lu_decomp','ldlt_decomp','chol_decomp'
+%slct_decomp_sch='lu_decomp'; %'no_decomp','lu_decomp','ldlt_decomp','chol_decomp'
 fl_cholmod = 1; % flag for using CHOLMOD in suitesparse for fast and memory-efficient LDLT factorization and inversion
 fl_volt_source = 2; % symmetric voltage source implementation
 fl_profile = 0; % cpu and memory profiling

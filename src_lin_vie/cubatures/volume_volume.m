@@ -96,15 +96,26 @@ K(10) = sum(W .* TB .* ker) * J;
 
 
 % calculate the system's kernels
+%
+% Gx,x
 I(1) =  K(1);
+% G2D,x
 I(2) =  K(2);
+% G2D,y
 I(3) = -K(4);
+% Gx,2D
 I(4) =  K(3);
+% Gy,2D
 I(5) = -K(5);
+% G2D,2D
 I(6) =  K(8) + K(9);
+% Gz,3D
 I(7) = -2*K(7);
+% G3D,z
 I(8) = -2*K(6);
+% G2D,3D
 I(9) =  K(8) - K(9);
+% G3D,3D
 I(10)=  K(8) + K(9) + 4*K(10);
 
 

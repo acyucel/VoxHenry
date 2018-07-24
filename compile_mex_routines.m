@@ -7,7 +7,7 @@ disp('Compiling matrix-fill routines...')
 if (ispc)
     cd src_lin_vie\singular\singular_win_compiled\
 else
-    cd src_lin_vie/singular/singular_win_compiled/
+    cd src_lin_vie/singular/singular_linux_compiled/
 end
 
 linear_build

@@ -1855,10 +1855,13 @@ nodeid_rght=cell(num_ports,1);
 dum_exc=0;
 dum_grnd=0;
 for kk=1:num_ports
-    nodeid_lft{kk}(:) = nodeid_4_injectcurr(dum_exc+1:dum_exc+num_node_each_port(kk,2));
+    % changed from "nodeid_lft{kk}(:)" to "nodeid_lft{kk}" to work under Octave
+    %nodeid_lft{kk}(:) = nodeid_4_injectcurr(dum_exc+1:dum_exc+num_node_each_port(kk,2));
+    nodeid_lft{kk} = nodeid_4_injectcurr(dum_exc+1:dum_exc+num_node_each_port(kk,2));
     dum_exc=dum_exc+num_node_each_port(kk,2);
     
-    nodeid_rght{kk}(:) = nodeid_4_grnd(dum_grnd+1:dum_grnd+num_node_each_port(kk,1));
+    %nodeid_rght{kk}(:) = nodeid_4_grnd(dum_grnd+1:dum_grnd+num_node_each_port(kk,1));
+    nodeid_rght{kk} = nodeid_4_grnd(dum_grnd+1:dum_grnd+num_node_each_port(kk,1));
     dum_grnd=dum_grnd+num_node_each_port(kk,1);
 end
 
