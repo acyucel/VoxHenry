@@ -2,9 +2,14 @@ function lse_sparse_precon_prepare(dx,freq,OneoverMc,idxS3,st_sparse_precon,node
 global A_inv LL UU PP QQ RR Sch_sparse slct_decomp_sch fl_cholmod
 
 %slct_decomp_sch='ldlt_decomp'; %'chol_decomp','no_decomp','ldlt_decomp','chol_decomp'
-
-slct_decomp_sch='ldlt_decomp'; %'no_decomp','lu_decomp','ldlt_decomp','chol_decomp'
-%slct_decomp_sch='lu_decomp'; %'no_decomp','lu_decomp','ldlt_decomp','chol_decomp'
+if(exist ("OCTAVE_VERSION", "builtin") > 0)
+    % Note: 'fl_cholmod' cannot be used under Octave, not supported
+    %       'ldlt_decomp' has not been ported under Octave yet
+    slct_decomp_sch='lu_decomp'; %'no_decomp','lu_decomp','ldlt_decomp','chol_decomp'
+else 
+    slct_decomp_sch='ldlt_decomp'; %'no_decomp','lu_decomp','ldlt_decomp','chol_decomp'
+end
+    
 fl_cholmod = 1; % flag for using CHOLMOD in suitesparse for fast and memory-efficient LDLT factorization and inversion
 fl_volt_source = 2; % symmetric voltage source implementation
 fl_profile = 0; % cpu and memory profiling

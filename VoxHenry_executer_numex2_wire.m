@@ -384,6 +384,5 @@ save('results_numex2_wire/data_curr_plot.mat', 'x', 'Ae_only_leaving','Ae_only_e
 disp(['Done... Saving data'])
 disp('-----------------------------------------------------')
 
-% Enrico debug - temporary disable post-processing (images)
 post_processor_numex2
 

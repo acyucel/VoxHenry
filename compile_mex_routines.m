@@ -10,7 +10,14 @@ else
     cd src_lin_vie/singular/singular_linux_compiled/
 end
 
-linear_build
+% if running under Octave, use the mex build specific linear_build
+% remark: not ported for Linux yet!
+if(exist ("OCTAVE_VERSION", "builtin") > 0)
+    linear_build_octave
+else
+    linear_build
+end
+
 cd ..
 cd ..
 disp('Done... Compiling matrix-fill routines')

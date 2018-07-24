@@ -58,25 +58,28 @@ Zpb  = dx/2*Zp;
 TB = 1;
 K(1) = sum(W .* TB .* ker) * J;
 
+% Exploiting integral symmetry. K(2) =  -K(3)
 % pulse-linear(x')
-TB = Xpb;
-K(2) = sum(W .* TB .* ker) * J;
+%TB = Xpb;
+%K(2) = sum(W .* TB .* ker) * J;
 
 % linear(x)-pulse'
 TB = Xt;
 K(3) = sum(W .* TB .* ker) * J;
 
+% Exploiting integral symmetry. K(4) =  -K(5)
 % pulse-linear(y')
-TB = Ypb;
-K(4) = sum(W .* TB .* ker) * J;
+%TB = Ypb;
+%K(4) = sum(W .* TB .* ker) * J;
 
 % linear(y)-pulse'
 TB = Yt;
 K(5) = sum(W .* TB .* ker) * J;
 
+% Exploiting integral symmetry. K(6) =  -K(7)
 % pulse-linear(z')
-TB = Zpb;
-K(6) = sum(W .* TB .* ker) * J;
+%TB = Zpb;
+%K(6) = sum(W .* TB .* ker) * J;
 
 % linear(z)-pulse'
 TB = Zt;
@@ -100,9 +103,9 @@ K(10) = sum(W .* TB .* ker) * J;
 % Gx,x
 I(1) =  K(1);
 % G2D,x
-I(2) =  K(2);
+I(2) =  -K(3);
 % G2D,y
-I(3) = -K(4);
+I(3) = K(5);
 % Gx,2D
 I(4) =  K(3);
 % Gy,2D
@@ -112,7 +115,7 @@ I(6) =  K(8) + K(9);
 % Gz,3D
 I(7) = -2*K(7);
 % G3D,z
-I(8) = -2*K(6);
+I(8) = 2*K(7);
 % G2D,3D
 I(9) =  K(8) - K(9);
 % G3D,3D

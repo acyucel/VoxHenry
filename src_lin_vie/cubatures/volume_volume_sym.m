@@ -58,6 +58,8 @@ Zpb  = dx/2*Zp;
 
 %% 3 unique kernels
 
+K = zeros(3,1);
+
 if(dir == 1)
     % change of variable for testing function
     Xt  = dx/2*X;

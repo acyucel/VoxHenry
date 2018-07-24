@@ -1,6 +1,6 @@
 function f = coefficients(n,np,l,k0,dx,ker_type)
 
-%% calculates the constnat coefficients part for the 4 surface-surface kernels
+%% calculates the constant coefficients part for the 4 surface-surface kernels
 switch ker_type
     
     case 1
@@ -9,7 +9,7 @@ switch ker_type
 
     case 2
         %% 2nd kernel's coefficients
-        % gradinet of fm
+        % gradient of fm
         switch l
             case 1
                 Nfm = [0 0 0];
