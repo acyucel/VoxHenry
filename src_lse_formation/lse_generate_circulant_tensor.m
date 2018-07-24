@@ -295,7 +295,7 @@ if N <2; Ns = 1;end
 % integrals
 [I1_co, I2_co, I3_co, I4_co]  = surface_surface_coeff(dx,ko_grfn);
 
-if (lse_enhanced_near == 2 || Ls ~= Ms || Ls ~= Ns)
+if (lse_enhanced_near == 2 && Ls == Ms && Ls == Ns)
   
     % compute interactions exploiting symmetry
     % remark: volume must be cubic, i.e. 'Ls' = 'Ms' = 'Ns'
