@@ -14,7 +14,7 @@ disp('Post-processing...')
 %                     Printing the R+jL matrices
 % -------------------------------------------------------------------------
 
-load('results_numex1_straight_conductor\data_R_jL_mat.mat');
+load('results_numex1_straight_conductor/data_R_jL_mat.mat');
 disp('-----------------------------------------------------')
 disp('R+jL matrices ::: ')
 
@@ -24,11 +24,14 @@ for freq_no=1:num_freq
         disp([num2str(R_jL_mat(kk,:,freq_no))])
     end
 end
-cd results_numex1_straight_conductor\
+cd results_numex1_straight_conductor
 fasthenry_results_straight_conductor
 cd ..
 
 FigHandle = figure;
+% delay visibility as long as possible, as this speeds up visualization
+set(FigHandle, 'Visible', 'off');
+
 set(gca,'FontSize',24);set(gca,'FontName','Times New Roman');
 %set(FigHandle, 'Position', [100, 100, 1280, 1024]);
 set(FigHandle, 'Position', [100, 100, 1280, 900]);
@@ -55,10 +58,22 @@ hold on
 h=loglog(fH_data(:,1),1e12*imag(fH_data(:,2)),'ro'); set(h,'LineWidth',2);
 legend('VoxHenry','FastHenry');
 axis tight;grid on;xlabel('Frequency (Hz)');ylabel('Inductance (pH)');
-ylim(1e12*[0.95e-11 1.06e-11]); set(gca,'YTick',1e12*[0.95e-11 0.975e-11 1.0e-11 1.025e-11 1.05e-11]);
+if(exist ("OCTAVE_VERSION", "builtin") > 0)
+    % need to work-around Octave limit/bug with low ylim values
+    ylim(gca, 'auto');
+else
+    ylim(1e12*[0.95e-11 1.06e-11]); set(gca,'YTick',1e12*[0.95e-11 0.975e-11 1.0e-11 1.025e-11 1.05e-11]);
+end
 set(gca,'XTick',[10^0 10^2 10^4 10^6 10^8 10^10])
 set(gca,'FontSize',24);set(gca,'FontName','Times New Roman');
 set(gca,'LineWidth',1); grid minor;
+
+set(FigHandle, 'Visible', 'on');
+%refresh;
+drawnow;
+
+print('results_numex1_straight_conductor/res_ind_voxhenry',  '-dpng', '-r300')
+print('Results/res_ind_voxhenry',  '-dpng', '-r300')
 
 
 disp('L2 norm error for resistance :::')
@@ -67,8 +82,6 @@ sqrt((sum(abs(real(squeeze(R_jL_mat))-real(fH_data(:,2))).^2)/sum(abs(real(fH_da
 disp('L2 norm error for inductance :::')
 sqrt(sum(abs(imag(squeeze(R_jL_mat))-imag(fH_data(:,2))).^2)/sum(abs(imag(fH_data(:,2))).^2))
 
-print('results_numex1_straight_conductor/res_ind_voxhenry',  '-dpng', '-r300')
-print('Results/res_ind_voxhenry',  '-dpng', '-r300')
 
 disp('-----------------------------------------------------')
 

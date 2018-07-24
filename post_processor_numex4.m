@@ -14,7 +14,7 @@ disp('Post-processing...')
 %                     Printing the R+jL matrices
 % -------------------------------------------------------------------------
 
-load('results_numex4_square_coil\data_R_jL_mat.mat');
+load('results_numex4_square_coil/data_R_jL_mat.mat');
 disp('-----------------------------------------------------')
 disp('R+jL matrices ::: ')
 
@@ -24,11 +24,14 @@ for freq_no=1:num_freq
         disp([num2str(R_jL_mat(kk,:,freq_no))])
     end
 end
-cd results_numex4_square_coil\
+cd results_numex4_square_coil
 fasthenry_results_square_coil
 cd ..
 
 FigHandle = figure;
+% delay visibility as long as possible, as this speeds up visualization
+set(FigHandle, 'Visible', 'off');
+
 set(gca,'FontSize',24);set(gca,'FontName','Times New Roman');
 set(FigHandle, 'Position', [0, 0, 1280, 900]);
 subplot(2,1,1)
@@ -55,6 +58,10 @@ set(gca,'YTick',[0.21 0.22 0.23]); ylim([0.21 0.23]);
 set(gca,'XTick',[10^0 10^2 10^4 10^6 10^8 10^10])
 set(gca,'FontSize',24);set(gca,'FontName','Times New Roman');
 set(gca,'LineWidth',1); grid minor;
+
+set(FigHandle, 'Visible', 'on');
+%refresh;
+drawnow;
 
 
 disp('L2 norm error for resistance :::')

@@ -31,7 +31,11 @@ for freq_no=1:num_freq
     [~, res_analytic(freq_no), ind_analytic(freq_no)] = ...
         calculate_ind_res_cond_w_circularcs(freq_all(freq_no),len_wire,rad_wire,sigma_e);
 end
+
 FigHandle = figure;
+% delay visibility as long as possible, as this speeds up visualization
+set(FigHandle, 'Visible', 'off');
+    
 set(gca,'FontSize',24);set(gca,'FontName','Times New Roman');
 set(FigHandle, 'Position', [100, 100, 1280, 900]);
 subplot(2,1,1)
@@ -54,10 +58,20 @@ hold on
 h=loglog(freq_all,ind_analytic,'ro'); set(h,'LineWidth',2);
 legend('VoxHenry','Analytical Formula');
 axis tight;grid on;xlabel('Frequency');ylabel('Inductance');
-ylim([2.1e-11 2.4e-11]); set(gca,'YTick',[2.1e-11 2.2e-11 2.3e-11 2.4e-11])
+if(exist ("OCTAVE_VERSION", "builtin") > 0)
+    % need to work-around Octave limit/bug with low ylim values
+    ylim(gca, 'auto');
+else
+    ylim([2.1e-11 2.4e-11]); set(gca,'YTick',[2.1e-11 2.2e-11 2.3e-11 2.4e-11])
+end
 set(gca,'FontSize',24);set(gca,'FontName','Times New Roman');
 
-disp('-----------------------------------------------------')
+set(FigHandle, 'Visible', 'on');
+%refresh;
+drawnow;
+
+print('results_numex2_wire/res_ind_voxhenry',  '-dpng', '-r300')
+
 
 disp('L2 norm error for resistance :::')
 sqrt((sum(abs(real(squeeze(R_jL_mat))-res_analytic).^2)/sum(abs(res_analytic).^2)))
@@ -65,8 +79,8 @@ sqrt((sum(abs(real(squeeze(R_jL_mat))-res_analytic).^2)/sum(abs(res_analytic).^2
 disp('L2 norm error for inductance :::')
 sqrt(sum(abs(imag(squeeze(R_jL_mat))-ind_analytic).^2)/sum(abs(ind_analytic).^2))
 
+disp('-----------------------------------------------------')
 
-print('results_numex2_wire/res_ind_voxhenry',  '-dpng', '-r300')
 
 % ------------------------------------------------------------------------
 %                     Printing CPU Times

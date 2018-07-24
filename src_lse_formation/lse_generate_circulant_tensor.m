@@ -82,7 +82,7 @@ if M <n_mediumM; n_mediumM = M; end
 if N <n_mediumN; n_mediumN = N; end
 
 % if should not exploit symmetry, or if not a cubic volume, use standard method
-if(lse_exploit_symmetry == 0 || n_mediumL != n_mediumM || n_mediumL != n_mediumN ) 
+if(lse_exploit_symmetry == 0 || n_mediumL ~= n_mediumM || n_mediumL ~= n_mediumN ) 
     tic
     parfor mx = 1:n_mediumL
         for my = 1:n_mediumM
@@ -291,7 +291,7 @@ if N <2; Ns = 1;end
 tic
 [I1_co, I2_co, I3_co, I4_co]  = surface_surface_coeff(dx,ko_grfn);
 
-if (lse_enhanced_near == 2 || Ls != Ms || Ls != Ns)
+if (lse_enhanced_near == 2 || Ls ~= Ms || Ls ~= Ns)
   
     % compute interactions exploiting symmetry
     % remark: volume must be cubic, i.e. 'Ls' = 'Ms' = 'Ns'
