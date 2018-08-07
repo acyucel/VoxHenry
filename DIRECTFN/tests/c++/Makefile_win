@@ -1,0 +1,64 @@
+ROOT_DIR = ../../
+
+include ../../settings/Makefile.nmake_win
+
+INCL_PATH = -I../../include
+LIB_PATH = ../../lib/win
+LOCAL_LIB_NAME = $(DIRECTFN_LIB_NAME).$(SO)
+
+
+all: allobj allexe
+
+allobj: test_directfn_quad_ea.$(obj) \
+		test_directfn_quad_st.$(obj) \
+		test_directfn_quad_va.$(obj) \
+		test_directfn_triag_ea.$(obj) \
+		test_directfn_triag_st.$(obj) \
+		test_directfn_triag_va.$(obj)
+	
+allexe: test_directfn_quad_ea.$(exe) \
+		test_directfn_quad_st.$(exe) \
+		test_directfn_quad_va.$(exe) \
+		test_directfn_triag_ea.$(exe) \
+		test_directfn_triag_st.$(exe) \
+		test_directfn_triag_va.$(exe)
+	
+test_directfn_quad_ea.$(obj): test_directfn_quad_ea.cpp
+	$(CompCXX) -c $(FlagsCXX) $(INCL_PATH) test_directfn_quad_ea.cpp
+
+test_directfn_quad_st.$(obj): test_directfn_quad_st.cpp
+	$(CompCXX) -c $(FlagsCXX) $(INCL_PATH) test_directfn_quad_st.cpp
+
+test_directfn_quad_va.$(obj): test_directfn_quad_va.cpp
+	$(CompCXX) -c $(FlagsCXX) $(INCL_PATH) test_directfn_quad_va.cpp
+
+test_directfn_triag_ea.$(obj): test_directfn_triag_ea.cpp
+	$(CompCXX) -c $(FlagsCXX) $(INCL_PATH) test_directfn_triag_ea.cpp
+
+test_directfn_triag_st.$(obj): test_directfn_triag_st.cpp
+	$(CompCXX) -c $(FlagsCXX) $(INCL_PATH) test_directfn_triag_st.cpp
+
+test_directfn_triag_va.$(obj): test_directfn_triag_va.cpp
+	$(CompCXX) -c $(FlagsCXX) $(INCL_PATH) test_directfn_triag_va.cpp
+
+
+test_directfn_quad_ea.$(exe): test_directfn_quad_ea.obj
+	 link $(FlagsAR) /LIBPATH:$(LIB_PATH) test_directfn_quad_ea.obj $(LOCAL_LIB_NAME)
+
+test_directfn_quad_st.$(exe): test_directfn_quad_st.obj
+	 link $(FlagsAR) /LIBPATH:$(LIB_PATH) test_directfn_quad_st.obj $(LOCAL_LIB_NAME)
+
+test_directfn_quad_va.$(exe): test_directfn_quad_va.obj
+	 link $(FlagsAR) /LIBPATH:$(LIB_PATH) test_directfn_quad_va.obj $(LOCAL_LIB_NAME)
+
+test_directfn_triag_ea.$(exe): test_directfn_triag_ea.obj
+	 link $(FlagsAR) /LIBPATH:$(LIB_PATH) test_directfn_triag_ea.obj $(LOCAL_LIB_NAME)
+
+test_directfn_triag_st.$(exe): test_directfn_triag_st.obj
+	 link $(FlagsAR) /LIBPATH:$(LIB_PATH) test_directfn_triag_st.obj $(LOCAL_LIB_NAME)
+
+test_directfn_triag_va.$(exe): test_directfn_triag_va.obj
+	 link $(FlagsAR) /LIBPATH:$(LIB_PATH) test_directfn_triag_va.obj $(LOCAL_LIB_NAME)
+
+clean:
+	 del *.obj *.exe

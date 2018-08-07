@@ -1,0 +1,64 @@
+ROOT_DIR = ../../../
+
+include ../../../settings/Makefile.nmake_win
+
+INCL_PATH = -I../../../include
+LIB_PATH = ../../../lib/win
+LOCAL_LIB_NAME = $(DIRECTFN_LIB_NAME).$(SO)
+
+
+all: allobj allexe
+
+allobj: curvilinear.$(obj) \
+		different_shape.$(obj) \
+		ss_ea_one_N.$(obj) \
+		ss_va_one_N.$(obj) \
+		tri_vs_quad.$(obj) \
+		ws_st_one_N.$(obj)
+	
+allexe: curvilinear.$(exe) \
+		different_shape.$(exe) \
+		ss_ea_one_N.$(exe) \
+		ss_va_one_N.$(exe) \
+		tri_vs_quad.$(exe) \
+		ws_st_one_N.$(exe)
+	
+curvilinear.$(obj): curvilinear.cpp
+	$(CompCXX) -c $(FlagsCXX) $(INCL_PATH) curvilinear.cpp
+
+different_shape.$(obj): different_shape.cpp
+	$(CompCXX) -c $(FlagsCXX) $(INCL_PATH) different_shape.cpp
+
+ss_ea_one_N.$(obj): ss_ea_one_N.cpp
+	$(CompCXX) -c $(FlagsCXX) $(INCL_PATH) ss_ea_one_N.cpp
+
+ss_va_one_N.$(obj): ss_va_one_N.cpp
+	$(CompCXX) -c $(FlagsCXX) $(INCL_PATH) ss_va_one_N.cpp
+
+tri_vs_quad.$(obj): tri_vs_quad.cpp
+	$(CompCXX) -c $(FlagsCXX) $(INCL_PATH) tri_vs_quad.cpp
+
+ws_st_one_N.$(obj): ws_st_one_N.cpp
+	$(CompCXX) -c $(FlagsCXX) $(INCL_PATH) ws_st_one_N.cpp
+
+
+curvilinear.$(exe): curvilinear.obj
+	 link $(FlagsAR) /LIBPATH:$(LIB_PATH) curvilinear.obj $(LOCAL_LIB_NAME)
+
+different_shape.$(exe): different_shape.obj
+	 link $(FlagsAR) /LIBPATH:$(LIB_PATH) different_shape.obj $(LOCAL_LIB_NAME)
+
+ss_ea_one_N.$(exe): ss_ea_one_N.obj
+	 link $(FlagsAR) /LIBPATH:$(LIB_PATH) ss_ea_one_N.obj $(LOCAL_LIB_NAME)
+
+ss_va_one_N.$(exe): ss_va_one_N.obj
+	 link $(FlagsAR) /LIBPATH:$(LIB_PATH) ss_va_one_N.obj $(LOCAL_LIB_NAME)
+
+tri_vs_quad.$(exe): tri_vs_quad.obj
+	 link $(FlagsAR) /LIBPATH:$(LIB_PATH) tri_vs_quad.obj $(LOCAL_LIB_NAME)
+
+ws_st_one_N.$(exe): ws_st_one_N.obj
+	 link $(FlagsAR) /LIBPATH:$(LIB_PATH) ws_st_one_N.obj $(LOCAL_LIB_NAME)
+
+clean:
+	 del *.obj *.exe

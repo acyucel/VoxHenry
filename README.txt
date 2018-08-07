@@ -21,7 +21,25 @@ VoxHenry uses two additional modules (included in the distribution):
 - DIRECTFN
 - SuiteSparse
 
-Before using VoxHenry, you should launch the script 'compile_mex_routines.m'
+However, DIRECTFN comes in two flavors:
+
+- one is faster, and aligned to the latest DIRECTFN distribution available
+  from https://github.com/thanospol/DIRECTFN as of Aug 2018, but it requires
+  compilation in format of a library before being able to use it
+  from MatLab or Octave. This is the default one.
+  
+- one is slower, but can be directly compiled from within MatLab or Octave.
+  If you want to use this version, you must modify the two files:
+  - compile_mex_routines.m
+  - pre_define_the_path_for_folders.m
+  changing "use_recent_DIRECTFN=1" in "use_recent_DIRECTFN=0"
+
+If you are using the default DIRECTFN implementation, you need to compile it
+first in the form of a library. Follow the instructions you can find in the
+file "README.md" under the directory "DIRECTFN" to compile the library
+for your environment.
+
+Then, before using VoxHenry, you should launch the script 'compile_mex_routines.m'
 contained in the root directory, to generate the corresponding 'mex' files
 (i.e. C/C++ compiled files that can be called from MatLab/Octave).
 

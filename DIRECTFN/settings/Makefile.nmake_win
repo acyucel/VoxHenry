@@ -1,0 +1,22 @@
+CompCXX   = $(CXX) # /O3   /Qmic 
+#CPPOPT = /EHsc /D_CRT_SECURE_NO_DEPRECATE /Ox 
+#FlagsCXX = -DESRI_WINDOWS $(INCLUDEDIRS) $(CPPOPT)
+FlagsCXX = /Zi /nologo /W1 /WX- /O2 /Gm- /EHsc /MD /GS /Zc:wchar_t /Zc:forScope /Zc:inline /Gd /TP 
+MOVE=mv  
+SO=lib
+AR=arch.exe
+FlagsAR   = /NOLOGO /MACHINE:X64
+FlagsAR   =
+LINK_PATH = 
+LINK_LIBS = 
+obj = obj
+
+
+DIRECTFN_LIB_NAME = directfn
+
+# End of the file
+
+   
+# important !  If -Ofast does not work, use -O3
+# FlagsCXX += -Ofast -fPIC -flto
+# Probably not needed

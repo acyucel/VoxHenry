@@ -1,0 +1,15 @@
+
+CompCXX   = g++ -std=c++11 
+FlagsCXX  = -Ofast -flto  
+FlagsCXX += -pedantic -Wall -Wold-style-cast -Wextra -Wunused
+MOVE=mv  
+SO=a 
+AR=gcc-ar.exe
+FlagsAR   = ruv
+LINK_PATH = 
+LINK_LIBS = 
+obj = o
+
+# End of the file
+
+   

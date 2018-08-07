@@ -1,0 +1,5 @@
+
+
+Static or dynamic library
+
+

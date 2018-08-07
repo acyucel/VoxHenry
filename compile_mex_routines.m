@@ -2,20 +2,31 @@ clc
 close all
 clear all
 
+% use recent DIRECTFN (faster)
+use_recent_DIRECTFN=1;
+
+filesep = filesep();
+
 % compile MEX-based matrix-fill routines
 disp('Compiling matrix-fill routines...')
-if (ispc)
-    cd src_lin_vie\singular\singular_win_compiled\
-else
-    cd src_lin_vie/singular/singular_linux_compiled/
-end
 
-% if running under Octave, use the mex build specific linear_build
-% remark: not ported for Linux yet!
-if(exist ("OCTAVE_VERSION", "builtin") > 0)
-    linear_build_octave
+if (use_recent_DIRECTFN)
+  cd(['DIRECTFN', filesep, 'mex']);
+  build
 else
-    linear_build
+  if (ispc)
+    cd src_lin_vie\singular\singular_win_compiled\
+  else
+    cd src_lin_vie/singular/singular_linux_compiled/
+  end
+
+  % if running under Octave, use the mex build specific linear_build
+  % remark: not ported for Linux yet!
+  if(exist ("OCTAVE_VERSION", "builtin") > 0)
+      linear_build_octave
+  else
+      linear_build
+  end
 end
 
 cd ..

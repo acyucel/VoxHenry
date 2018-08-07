@@ -1,0 +1,40 @@
+ROOT_DIR = ../../../
+
+include ../../../settings/Makefile.nmake_win
+
+INCL_PATH = -I../../../include
+LIB_PATH = ../../../lib/win
+LOCAL_LIB_NAME = $(DIRECTFN_LIB_NAME).$(SO)
+
+
+all: allobj allexe
+
+allobj: st_curv.$(obj) \
+		st_one_param_const.$(obj) \
+		tri_vs_quad.$(obj)
+	
+allexe: st_curv.$(exe) \
+		st_one_param_const.$(exe) \
+		tri_vs_quad.$(exe)
+	
+st_curv.$(obj): st_curv.cpp
+	$(CompCXX) -c $(FlagsCXX) $(INCL_PATH) st_curv.cpp
+
+st_one_param_const.$(obj): st_one_param_const.cpp
+	$(CompCXX) -c $(FlagsCXX) $(INCL_PATH) st_one_param_const.cpp
+
+tri_vs_quad.$(obj): tri_vs_quad.cpp
+	$(CompCXX) -c $(FlagsCXX) $(INCL_PATH) tri_vs_quad.cpp
+
+
+st_curv.$(exe): st_curv.obj
+	 link $(FlagsAR) /LIBPATH:$(LIB_PATH) st_curv.obj $(LOCAL_LIB_NAME)
+
+st_one_param_const.$(exe): st_one_param_const.obj
+	 link $(FlagsAR) /LIBPATH:$(LIB_PATH) st_one_param_const.obj $(LOCAL_LIB_NAME)
+
+tri_vs_quad.$(exe): tri_vs_quad.obj
+	 link $(FlagsAR) /LIBPATH:$(LIB_PATH) tri_vs_quad.obj $(LOCAL_LIB_NAME)
+
+clean:
+	 del *.obj *.exe

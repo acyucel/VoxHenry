@@ -1,0 +1,17 @@
+
+#CompCXX   = clang++-mp-3.9 -fopenmp -std=c++11 -mavx
+CompCXX   = /Applications/Xcode.app//Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++ -std=c++11 
+FlagsCXX  = -Ofast -fPIC -flto -D_CLANG_700_1_81_ 
+FlagsCXX += -m64 -mtune=haswell -march=haswell
+FlagsCXX += -pedantic -Wall -Wold-style-cast -Wextra -Wunused
+MOVE      = mv  
+SO        = a
+AR        = ar
+#llvm-ar-mp-3.9
+FlagsAR   = ruv
+LINK_PATH = 
+LINK_LIBS =
+obj = o
+
+# End of the file
+

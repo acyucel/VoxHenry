@@ -1,0 +1,157 @@
+# Main settings files. It is used for all src compilation. 
+
+#  You should define the following system variables:
+#  MARIE_CPU = {gcc530_debug, clang_debug, ...}
+
+ifndef MARIE_CPU
+#@echo "CPU is not defined! Set default value"
+   #MARIE_CPU = gcc530_debug
+   MARIE_CPU = clang_release
+endif
+
+# Objective file extension
+obj = o
+
+# MARIE++ Version
+MARIE_VER = mc01
+
+# Internal Library names
+UTILS_LIB_NAME    = $(MARIE_VER)utils
+MLAA_LIB_NAME     = $(MARIE_VER)mlaa
+QUADS_LIB_NAME    = $(MARIE_VER)quads
+VIE_LIB_NAME      = $(MARIE_VER)vie
+SIE_LIB_NAME      = $(MARIE_VER)sie
+LRC2D_LIB_NAME    = $(MARIE_VER)lrc2d
+GEO_LIB_NAME      = $(MARIE_VER)geo
+NUMERIC_LIB_NAME  = $(MARIE_VER)numeric
+
+$(pwd)
+export FFTW_PATH=$(pwd)/../lib
+#$(echo) $FFTW_PATH
+
+# External library names
+DIRECTFN_LIB_NAME = directfn
+DEMCEM_LIB_NAME   = demcem
+FFTW_LIB_NAME     = fftw3
+FFTW_OMP_LIB_NAME = fftw3_omp
+OMP_LIB_NAME      = gomp
+#BLAS_LIB_NAME     = blas361
+#LAPACK_LIB_NAME   = lapack361
+
+# Include paths
+BOOST_DIR = external/boost_1_58_0c
+DIRECTFN_DIR = external/directfn
+FFTW_DIR  = #$(FFTW_PATH)
+#BLAS_DIR  = external/lapack_3_6_1/BLAS/SR
+
+# Docs generator
+DoxyGenUtil = doxygen
+
+# Choosing the system
+ifeq ($(MARIE_CPU),gcc530_omp_debug)
+    CompCXX     = g++-5 -std=c++11 -mavx
+    MOVE        = mv
+    SO          = a
+    AR          = ar
+    FlagsAR     = -ruv
+    FlagsCXX    = -Ofast -flto -fPIC -march=native -mtune=native --fast-math -D_GCC_5_3_0_  
+    FlagsCXX   += -pedantic -Wall -Wold-style-cast -Wextra -Wunused
+    FlagsCXX   += -fprefetch-loop-arrays 
+    FlagsCXX   += -fopenmp #-fopenmp-simd
+    LINK_PATH   = #-L$(FFTW_PATH)/lib
+    LINK_LIBS   = #-l$(FFTW_OMP_LIB_NAME) -l$(OMP_LIB_NAME)
+endif
+
+ifeq ($(MARIE_CPU),gcc530_debug)
+    CompCXX     = g++ -std=c++11 -mavx 
+    MOVE        = mv
+    SO          = a
+    FlagsCXX    = -Ofast -flto -fPIC -march=native -mtune=native --fast-math -D_GCC_5_3_0_  
+    FlagsCXX   += -pedantic -Wall -Wold-style-cast -Wextra -Wunused
+    FlagsCXX   += -fprefetch-loop-arrays -ftree-vectorize -mveclibabi=svml
+    LINK_PATH   =  #-L$(FFTW_PATH)/lib 
+    LINK_LIBS   = 
+endif
+
+ifeq ($(MARIE_CPU),clang_release)
+    CompCXX   = clang++ -std=c++11 -mavx
+    FlagsCXX  = -Ofast -fPIC -flto -D_CLANG_700_1_81_ -DBOOST_DISABLE_ASSERTS
+    FlagsCXX += -pedantic -Wall -Wold-style-cast -Wextra -Wunused
+    MOVE      = mv   # cp -lf
+    SO          = a
+    AR          = ar
+    FlagsAR     = -ruv
+    LINK_PATH = #-L$(FFTW_PATH)/lib 
+    LINK_LIBS = 
+endif
+
+
+
+ifeq ($(MARIE_CPU),intel_debug)
+    CompCXX   = icpc -std=c++11 -xCORE-AVX2 -mtune=core-avx2 -march=core-avx2
+    CompCXX  += -mavx
+    FlagsCXX  = -O3 -fPIC  -D_INTEL_16_ -DBOOST_DISABLE_ASSERTS
+    FlagsCXX += -pedantic -Wall -Wextra -Wunused
+    FlagsCXX += -mkl=sequential
+    MOVE      = mv  
+    SO        = so
+    LINK_PATH =
+    LINK_LIBS = -mkl=sequential
+endif
+
+
+ifeq ($(MARIE_CPU),intel_omp_debug)
+    CompCXX   = icpc -std=c++11 -xCORE-AVX2 -mtune=core-avx2 -march=core-avx2
+    FlagsCXX  = -O3 -fPIC  -D_INTEL_16_ -DBOOST_DISABLE_ASSERTS
+    FlagsCXX += -pedantic -Wall -Wextra -Wunused
+    FlagsCXX += -mkl=parallel -qopenmp
+    MOVE      = mv  
+    SO        = so
+    LINK_PATH =
+    LINK_LIBS = -mkl=parallel
+endif
+
+
+# g++-5 -march=native -Q --help=target
+
+  #-falign-functions -falign-jumps -falign-labels -falign-loops -fbranch-target-load-optimize -fcprop-registers -fcrossjumping -fgcse-las 
+  #-fipa-cp-alignment -floop-block -floop-interchange -floop-nest-optimize -floop-unroll-and-jam -fmove-loop-invariants 
+  # -foptimize-sibling-calls -foptimize-strlen  -fpeephole -fpredictive-commoning 
+  #-freorder-blocks -freorder-blocks-and-partition -freorder-functions -fsel-sched-pipelining -fsel-sched-pipelining-outer-loops
+
+#ifeq ($(MARIE_CPU),gcc530_release)
+#    DoxyGenUtil = doxygen
+#    CompCC = gcc-5
+#    FlagsCC = -flto -Ofast -fPIC -march=native -mtune=native --fast-math
+#    CompCXX  = g++-5
+#    FlagsCXX = -flto -Ofast -fPIC -std=c++11 -march=native -mtune=native --fast-math -DNDEBUG -D_GCC_5_3_0_ -fopenmp -DBOOST_DISABLE_ASSERTS
+# -pedantic -Wall -Wold-style-cast -Wextra -Wunused
+#    CompFF   = gfortran-5
+#    FlagsFF  = -O3 -frecursive
+#    AR       = ar 
+#    FlagsAR  = rcv 
+#    MOVE     = mv
+#    SO       = so
+#endif
+
+#mac
+#ifeq ($(MARIE_CPU),clang_release)
+#    CompCXX  = clang++
+#    FlagsCXX = -Ofast -flto -fPIC -std=c++11 -D_CLANG_700_1_81_ -DBOOST_DISABLE_ASSERTS
+#    FlagsCXX += -pedantic -Wall -Wold-style-cast -Wextra -Wunused
+#    AR       = ar 
+#    FlagsAR  = ruv
+#    MOVE     = mv  
+#    SO 	     = dylib 
+#    DoxyGenUtil = doxygen
+#endif
+
+#intel
+#ifeq ($(CPU),intel)
+#    CompCXX = icpc -std=c++11 -O3 -pedantic #-openmp
+#    CompFF = ifort -O3 -w -c
+#    AR = xiar
+#endif
+
+# End of the file
+
