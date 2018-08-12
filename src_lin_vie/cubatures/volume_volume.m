@@ -4,10 +4,10 @@ function  I = volume_volume(W,X,Y,Z,Xp,Yp,Zp,k0,r_m,r_n,dx,volume_ker)
 
 %% change of variables
 
-% Jacobean
+% Jacobian
 J = (dx/2)^6;
 
-% sampling points for the Green kernel
+% sampling points for the Green kernel after change of variable
 Xg  = r_m(1) + dx/2*X;
 Yg  = r_m(2) + dx/2*Y;
 Zg  = r_m(3) + dx/2*Z;
@@ -32,8 +32,7 @@ switch volume_ker
     case 4
         % smoothed kernel
         ker1 = 1/4/pi * ( exp(-1j*k0*R) - 1.0 ) ./R;
-        % apply l'hopital at the points where the kernel's evaluation is
-        % 0/0
+        % apply l'hopital at the points where the kernel's evaluation is 0/0
         ker1(isnan(abs(ker1))) = -1j*k0 /4/pi;
         
         ker2 = k0^2/8/pi * R;
@@ -58,25 +57,28 @@ Zpb  = dx/2*Zp;
 TB = 1;
 K(1) = sum(W .* TB .* ker) * J;
 
+% Exploiting integral symmetry. K(2) =  -K(3)
 % pulse-linear(x')
-TB = Xpb;
-K(2) = sum(W .* TB .* ker) * J;
+%TB = Xpb;
+%K(2) = sum(W .* TB .* ker) * J;
 
 % linear(x)-pulse'
 TB = Xt;
 K(3) = sum(W .* TB .* ker) * J;
 
+% Exploiting integral symmetry. K(4) =  -K(5)
 % pulse-linear(y')
-TB = Ypb;
-K(4) = sum(W .* TB .* ker) * J;
+%TB = Ypb;
+%K(4) = sum(W .* TB .* ker) * J;
 
 % linear(y)-pulse'
 TB = Yt;
 K(5) = sum(W .* TB .* ker) * J;
 
+% Exploiting integral symmetry. K(6) =  -K(7)
 % pulse-linear(z')
-TB = Zpb;
-K(6) = sum(W .* TB .* ker) * J;
+%TB = Zpb;
+%K(6) = sum(W .* TB .* ker) * J;
 
 % linear(z)-pulse'
 TB = Zt;
@@ -95,16 +97,27 @@ TB = Zpb.*Zt;
 K(10) = sum(W .* TB .* ker) * J;
 
 
-% calculate the system's kernels
+% calculate the system's integrals
+%
+% Gx,x
 I(1) =  K(1);
-I(2) =  K(2);
-I(3) = -K(4);
+% G2D,x
+I(2) =  -K(3);
+% G2D,y
+I(3) = K(5);
+% Gx,2D
 I(4) =  K(3);
+% Gy,2D
 I(5) = -K(5);
+% G2D,2D
 I(6) =  K(8) + K(9);
+% Gz,3D
 I(7) = -2*K(7);
-I(8) = -2*K(6);
+% G3D,z
+I(8) = 2*K(7);
+% G2D,3D
 I(9) =  K(8) - K(9);
+% G3D,3D
 I(10)=  K(8) + K(9) + 4*K(10);
 
 

@@ -10,6 +10,9 @@ cut_below=1; % visualize below the cut [1] (<cut_pnt) or above the cut [0] (>cut
 fl_no_edge_line=1; % visualize without voxel edge lines
 fl_title_on = 0; % add title to the figure
 
+% no line contours for our patches as graphic root (groot) default
+%set(groot,'defaultpatchlinestyle','none');
+
 % 1) Obtain leaving currents on the nodes
 num_curr=size(Ae_only_leaving,2);
 x_node=Ae_only_leaving*x(1:num_curr);
@@ -246,7 +249,8 @@ if (cut_on == 1)
         end
     end
     
-    figure
+    FigHandle = figure;
+    set(FigHandle, 'Visible', 'off');
     set(gca,'FontSize',24); set(gca,'FontName','Times New Roman');
     if(interp_on == 1)
         if (log_on ==1)
@@ -280,20 +284,39 @@ if (cut_on == 1)
     view(130,20)
     
     xlabel('x');ylabel('y');zlabel('z');
-    set(gcf,'renderer','openGL');
+    % if next line is commented out, we rely on the automatic choice of the renderer (see 'renderermode')
+    %set(gcf,'renderer','openGL');
     
 else
     FigHandle = figure;
+    % delay visibility as long as possible, as this speeds up visualization
+    set(FigHandle, 'Visible', 'off');
+    
     %set(FigHandle, 'Position', [100, 100, 1280, 1024]);
-    set(FigHandle, 'Position', [100, 100, 1280, 500]);
+    set(FigHandle, 'Position', [100, 100, 640, 512]);
     %subplot(2,1,1)
-    set(gca,'FontSize',24); set(gca,'FontName','Times New Roman');
+    set(gca,'FontSize',12); set(gca,'FontName','Times New Roman');
+
+    map='hot';
+    %map='bone';
+    hcb=colormap(map);%caxis([0 20.0e-3]); 
+    %set(hcb,'XTick',[0 5e-3,10e-3,18e-3])
+
+    %view(130,20)
+    view(-45,20)
+    % if next line(s) is commented out, we rely on the automatic choice of the renderer (see 'renderermode')
+    %set(gcf,'Renderer','opengl');
+    %set(gcf,'Renderer','zbuffer')
+    %colorbar off
+    colorbar
+
     if(interp_on == 1)
         if (log_on ==1)
             tmp_vect=[];
             tmp_vect=max(20*log10(vertices_w_currs_color/maxx_curr),-dB_down);
             ppp=patch(faces_w_currs_x,faces_w_currs_y,faces_w_currs_z,tmp_vect);
-            colorbar; caxis([-dB_down 0]);
+            %colorbar;
+            caxis([-dB_down 0]);
             if(fl_title_on==1); title('Normalized Total Current (dB)'); end;
         else
             ppp=patch(faces_w_currs_x,faces_w_currs_y,faces_w_currs_z,vertices_w_currs_color);
@@ -305,33 +328,28 @@ else
             tmp_vect=[];
             tmp_vect=max(20*log10(faces_w_currs_color/maxx_curr),-dB_down);
             ppp=patch(faces_w_currs_x,faces_w_currs_y,faces_w_currs_z,tmp_vect);
-            colorbar; caxis([-dB_down 0]);
+            %colorbar;
+            caxis([-dB_down 0]);
             if(fl_title_on==1); title('Normalized Total Current (dB)'); end;
         else
             ppp=patch(faces_w_currs_x,faces_w_currs_y,faces_w_currs_z,faces_w_currs_color);
-            colorbar
+            %colorbar
             if(fl_title_on==1); title('Total Current'); end;
         end
     end
-    map='hot';
-    %map='bone';
-    hcb=colormap(hot);%caxis([0 20.0e-3]); 
-    %set(hcb,'XTick',[0 5e-3,10e-3,18e-3])
     axis tight; grid on; % this should be here, otherwise it doesn't add vertical patches
     axis equal; grid on;
-    %view(130,20)
-    view(-45,20)
     xlabel('x');ylabel('y');zlabel('z');
-    %set(gcf,'Renderer','opengl');
-    set(gcf,'Renderer','zbuffer')
-    set(gca,'FontSize',24); set(gca,'FontName','Times New Roman');
-    %colorbar off
-    colorbar
     
 end
 
 %set(ppp,'facealpha',1.0);
 %set(ppp,'FaceColor','interp');
 if (fl_no_edge_line == 1)
-    set(ppp,'EdgeColor','none')
+    % better use 'linestyle' than 'edgecolor' to remove patch contours
+    set(ppp,'LineStyle','none')
 end
+
+set(FigHandle, 'Visible', 'on');
+%refresh;
+drawnow;

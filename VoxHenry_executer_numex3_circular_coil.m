@@ -24,6 +24,7 @@ fl_check_geo=0; % set to 1 for only plotting the domain (no simulation)
 fl_check_ports=0; % set to 1 for only plotting the port nodes (no simulation)
 plot_option=1; % see the options of plotting in Visualization part
 freq_curr_plot=2.5e9; % frequency for plotting currents
+simple_post_proc = 1; % if 1, just plot the current densities in 3D
 
 % -------------------------------------------------------------------------
 %                  Inputs for the Structure
@@ -323,70 +324,6 @@ for freq_no=1:num_freq
     end
 end
 
-%% ------------------------------------------------------------------------
-%                         Visualization
-% -------------------------------------------------------------------------
-
-disp('-----------------------------------------------------')
-disp(['Plotting Current Distribution...'])
-
-close all
-
-% select plotting option - check the subroutines below for more options
-% option 1-> total currents on 3D structure, - no cut selection required
-% option 2-> current coefficients on the voxels - select plane and cut
-% option 3-> currents on the nodes via imagesc - select plane and cut
-% option 4-> currents on the nodes via quiver - select plane and cut
-% option 5-> currents on the structure w/directions via quiver3 - no cut selection required
-% voxels (on a selected cut), 3-> currents on nodes w/scalar values (on a selected cut) ,
-% plot_option=1;
-
-% set x_backup to x
-x = x_backup;
-
-% if any of plot option 2,3,4 is selected, define plane and cut
-slct_plane='xy'; %'xz'; 'yz';
-if (plot_option == 2 || plot_option == 3)
-    % 1) use the following for plot option 2 and 3
-    slct_cut=round(N/2);% round(M/2); round(L/2);
-elseif (plot_option == 4)
-    % 2) use the following for plot option 4 - we need coordinate of the cut
-    slct_cut=squeeze(r(1,1,N,3)); % z-coordinate of cut % squeeze(r(round(L/2),1,1,1)); % x-coordinate of cut; squeeze(r(1,round(M/2),1,2)); % y-coordinate of cut
-end
-
-if (plot_option == 2)
-    % sort current coefficients on voxels
-    [Jx_currs_grid,Jy_currs_grid,Jz_currs_grid,J2d_currs_grid,J3d_currs_grid,cmin,cmax]=post_obtain_curr_coefs_on_grid(x,Mc);
-elseif (plot_option > 2)
-    % obtain currents on nodes
-    [nodes_w_currs_x_aligned,nodes_w_currs_y_aligned,nodes_w_currs_z_aligned]=post_obtain_currs_on_nodes(x,Ae_only_leaving,Ae_only_entering_bndry,r,Mc,dx);
-end
-
-switch plot_option
-    case 1
-        % 1) Plot currents on structure
-        % Plot total currents as one scalar on each voxel
-        plot_currs_on_3D_structure(x,Ae_only_leaving,r,Mc,dx)
-    case 2
-        % 2) Plot current coefficients obtained via iterative solution
-        plot_curr_coefs_on_grid(slct_plane,slct_cut,r,Jx_currs_grid,Jy_currs_grid,Jz_currs_grid,J2d_currs_grid,J3d_currs_grid,cmin,cmax);
-    case 3
-        % 3) Plot currents with scalar values via imagesc
-        plot_curr_on_nodes(slct_plane,slct_cut,dx,nodes_w_currs_x_aligned,nodes_w_currs_y_aligned,nodes_w_currs_z_aligned)
-    case 4
-        % 4) Plot currents on cuts w/ directions via quiver
-        plot_curr_on_nodes_quiver(slct_plane,slct_cut,nodes_w_currs_x_aligned,nodes_w_currs_y_aligned,nodes_w_currs_z_aligned)
-    case 5
-        % 5) Plot currents on the structure w/directions via quiver3
-        plot_curr_on_nodes_quiver3(nodes_w_currs_x_aligned,nodes_w_currs_y_aligned,nodes_w_currs_z_aligned)
-    otherwise
-        disp('No current plotting!')
-end
-
-disp(['Done... Plotting Current Distribution'])
-disp('-----------------------------------------------------')
-
-
 % ------------------------------------------------------------------------
 %                         Storing Data
 % -------------------------------------------------------------------------
@@ -405,4 +342,73 @@ save('results_numex3_circular_coil/data_curr_plot.mat', 'x', 'Ae_only_leaving','
 
 disp(['Done... Saving data'])
 disp('-----------------------------------------------------')
+
+
+if(simple_post_proc == 1)
+    %% ------------------------------------------------------------------------
+    %                         Visualization
+    % -------------------------------------------------------------------------
+
+    disp('-----------------------------------------------------')
+    disp(['Plotting Current Distribution...'])
+
+    close all
+
+    % select plotting option - check the subroutines below for more options
+    % option 1-> total currents on 3D structure, - no cut selection required
+    % option 2-> current coefficients on the voxels - select plane and cut
+    % option 3-> currents on the nodes via imagesc - select plane and cut
+    % option 4-> currents on the nodes via quiver - select plane and cut
+    % option 5-> currents on the structure w/directions via quiver3 - no cut selection required
+    % voxels (on a selected cut), 3-> currents on nodes w/scalar values (on a selected cut) ,
+    % plot_option=1;
+
+    % set x_backup to x
+    x = x_backup;
+
+    % if any of plot option 2,3,4 is selected, define plane and cut
+    slct_plane='xy'; %'xz'; 'yz';
+    if (plot_option == 2 || plot_option == 3)
+        % 1) use the following for plot option 2 and 3
+        slct_cut=round(N/2);% round(M/2); round(L/2);
+    elseif (plot_option == 4)
+        % 2) use the following for plot option 4 - we need coordinate of the cut
+        slct_cut=squeeze(r(1,1,N,3)); % z-coordinate of cut % squeeze(r(round(L/2),1,1,1)); % x-coordinate of cut; squeeze(r(1,round(M/2),1,2)); % y-coordinate of cut
+    end
+
+    if (plot_option == 2)
+        % sort current coefficients on voxels
+        [Jx_currs_grid,Jy_currs_grid,Jz_currs_grid,J2d_currs_grid,J3d_currs_grid,cmin,cmax]=post_obtain_curr_coefs_on_grid(x,Mc);
+    elseif (plot_option > 2)
+        % obtain currents on nodes
+        [nodes_w_currs_x_aligned,nodes_w_currs_y_aligned,nodes_w_currs_z_aligned]=post_obtain_currs_on_nodes(x,Ae_only_leaving,Ae_only_entering_bndry,r,Mc,dx);
+    end
+
+    switch plot_option
+        case 1
+            % 1) Plot currents on structure
+            % Plot total currents as one scalar on each voxel
+            plot_currs_on_3D_structure(x,Ae_only_leaving,r,Mc,dx)
+        case 2
+            % 2) Plot current coefficients obtained via iterative solution
+            plot_curr_coefs_on_grid(slct_plane,slct_cut,r,Jx_currs_grid,Jy_currs_grid,Jz_currs_grid,J2d_currs_grid,J3d_currs_grid,cmin,cmax);
+        case 3
+            % 3) Plot currents with scalar values via imagesc
+            plot_curr_on_nodes(slct_plane,slct_cut,dx,nodes_w_currs_x_aligned,nodes_w_currs_y_aligned,nodes_w_currs_z_aligned)
+        case 4
+            % 4) Plot currents on cuts w/ directions via quiver
+            plot_curr_on_nodes_quiver(slct_plane,slct_cut,nodes_w_currs_x_aligned,nodes_w_currs_y_aligned,nodes_w_currs_z_aligned)
+        case 5
+            % 5) Plot currents on the structure w/directions via quiver3
+            plot_curr_on_nodes_quiver3(nodes_w_currs_x_aligned,nodes_w_currs_y_aligned,nodes_w_currs_z_aligned)
+        otherwise
+            disp('No current plotting!')
+    end
+
+    disp(['Done... Plotting Current Distribution'])
+    disp('-----------------------------------------------------')
+
+else
+    post_processor_numex3
+end
 

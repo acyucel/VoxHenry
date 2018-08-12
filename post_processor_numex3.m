@@ -35,6 +35,9 @@ for kk=1:length(freq_all)
 end
 
 FigHandle = figure;
+% delay visibility as long as possible, as this speeds up visualization
+set(FigHandle, 'Visible', 'off');
+
 set(gca,'FontSize',24);set(gca,'FontName','Times New Roman');
 set(FigHandle, 'Position', [100, 100, 1280, 900]);
 subplot(2,1,1)
@@ -48,6 +51,11 @@ ylim(1e9*[6.5e-10 7.1e-10]); %set(gca,'YTick',[2.1e-10 2.2e-10 2.3e-10]);
 set(gca,'XTick',[10^0 10^2 10^4 10^6 10^8 10^10 10^12])
 set(gca,'FontSize',24);set(gca,'FontName','Times New Roman');
 set(gca,'LineWidth',1); grid minor;
+
+set(FigHandle, 'Visible', 'on');
+%refresh;
+drawnow;
+
 
 disp('L2 norm error for self inductance :::')
 sqrt((sum(abs(imag(squeeze(R_jL_mat(1,1,:)))-ind_groover).^2)/sum(abs(ind_groover).^2)))

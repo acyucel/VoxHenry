@@ -3,12 +3,17 @@ function [fN_all,st_sparse_precon] = lse_generate_circulant_tensor(dx,ko,L,M,N,f
 % Code addition for running subroutine seperately
 % clc; close all; clear all
 % freq = 3e0; dx = 0.1e-1; EMconstants;
-% L=3; M=3; N=3
+% L=5; M=5; N=5
 % fl_comp_fullmat = 1;
 
-% if 'lse_enhanced_parallel' == 1, unroll the for loops to improve
-% parallelization for near interactions calculation
-lse_enhanced_parallel = 1;
+% if 'lse_enhanced_near' == 2, exploit symmetry when calculating G_mn terms
+% if 'lse_enhanced_near' == 1, unroll the for loops to improve
+%     parallelization for near interactions calculation
+% if 'lse_enhanced_near' == 0, use the original brute force way to compute G_mn terms
+lse_enhanced_near = 2;
+% if 'lse_exploit_symmetry' == 0, use the original brute force way to compute G_mn terms
+% if 'lse_exploit_symmetry' == 1, exploit symmetry when calculating G_mn terms
+lse_exploit_symmetry = 1;
 
 fl_oneoverr_kernel=1;
 if(fl_oneoverr_kernel == 1)
@@ -22,10 +27,13 @@ end
 % 2a) Specify the number of integration points - far, near
 
 % number of 1D points for far volume-volume integrals
+% (the total points in the 6D quadrature will be Np_1D_far_V^6)
 Np_1D_far_V    = 3;
 % number of 1D points for medium volume-volume integrals
 Np_1D_medium_V = 5;
 % number of 1D points for near surface-surface and singular integrals 
+% you can try to reduce the number of points to around 10, however for some
+% kernels 12 points are required for convergence
 Np_1D_near_S   = 12;
 
 % Set region of medium distances cells for higher order quadrature
@@ -76,26 +84,205 @@ if L <n_mediumL; n_mediumL = L; end
 if M <n_mediumM; n_mediumM = M; end
 if N <n_mediumN; n_mediumN = N; end
 
-tic
-parfor mx = 1:n_mediumL
-    for my = 1:n_mediumM
-        for mz = 1:n_mediumN
-            
-            m = [mx,my,mz];
-            % centre of the observation voxel
-            r_m = ((m-1) .* d)';
-            
-            G_mn(mx,my,mz,:) = volume_volume(W6D,X,Y,Z,Xp,Yp,Zp,ko_grfn,r_m,r_n,dx,1);
-            
+% if should not exploit symmetry, or if not a cubic volume, use standard method
+if(lse_exploit_symmetry == 0 || n_mediumL ~= n_mediumM || n_mediumL ~= n_mediumN ) 
+    tic
+    parfor mx = 1:n_mediumL
+        for my = 1:n_mediumM
+            for mz = 1:n_mediumN
+                
+                m = [mx,my,mz];
+                % centre of the observation voxel
+                r_m = ((m-1) .* d)';
+                
+                G_mn(mx,my,mz,:) = volume_volume(W6D,X,Y,Z,Xp,Yp,Zp,ko_grfn,r_m,r_n,dx,1);
+                
+            end
         end
     end
+    disp(['Time for computing medium interactions ::: ',num2str(toc)])
+else
+    % compute medium interactions exploiting symmetry
+    % remark: volume must be cubic, i.e. 'mediumL' = 'mediumM' = 'mediumN'
+    % remark: MUST zero the elements 6,9,10 in the last mode of the tensor,
+    %         as these calculations use accumulation 
+    %         (e.g. G_mn(mx,my,mz,6) = G_mn(mx,my,mz,6) + K(3);) 
+    %
+    % Explanation of the symmetry exploit:
+    % 
+    % We observe that the voxel region is actually 1/8 of the 360 degrees
+    % solid angle around the axis origin, and that calculating the 
+    % integrals we have either pulse functions or linear functions
+    % along x, y or z.
+    % Then, rotating the coordinate reference, what was calculated for 
+    % linear functions along x is now valid for y:
+    %      z   x                                y   z
+    %      |  /       becomes after rotation    |  /
+    %      | /                                  | /
+    %      |/____ y                             |/____ x
+    %
+    % The same is also true for z with another rotation.
+    % We need therefore to calculate the integrals only for the linear
+    % functions along x.
+    % 
+    % We observe then that in the 1/8 volume considered there is also
+    % symmetry w.r.t the coordinate x, in particular we can swap z and y,
+    % and the result is the same:
+    %      z   x                                y   z
+    %      |  /       has a symmetry along x    |  /
+    %      | /                                  | /
+    %      |/____ y                             |/____ z
+    %
+    % So we only need to calculate integrals for x on about half of the 
+    % voxels (the diagonal is included, so slightly more than the half)
+    %
+    % In the end, we also note from the integrals calculations 
+    % that Gx,2D = -G2D,x so this saves yet another integral
+     
+    tic
+    
+    % let's get the indexes of the voxels that we need to consider
+    % for the interactions. Note that we consider only half of the voxels 
+    % (plus the diagonal)
+    inter_idx = zeros( (n_mediumL * (n_mediumM + 1) * n_mediumN) / 2,1);
+    dum = 1;
+    for mx = 1:n_mediumL
+        for my = 1:n_mediumM
+            % to further exploit symmetry, let's calculate only helf of the quadrant
+            for mz = 1:my
+                inter_idx(dum) = sub2ind(size(G_mn), mx, my, mz);
+                dum = dum + 1;
+            end
+        end
+    end
+
+    % Now let's create a temporary storage for the kernels calculated for
+    % each voxel (three).
+    % This is needed as MatLab does not like the (apparently) random 
+    % insertion of elements in a matrix, plus some elements of G_mn
+    % calculated via symmetry needs accumulation, so different threads
+    % may try to access the same element at the same time, must avoid that
+    K_tmp = zeros(n_mediumL * n_mediumM * n_mediumN, 3);
+    parfor dum = 1:size(inter_idx,1)
+      
+        [mx,my,mz] = ind2sub(size(G_mn),inter_idx(dum));
+        m = [mx,my,mz];
+        % centre of the observation voxel
+        r_m = ((m-1) .* d)';
+
+        K_tmp(dum,:) = volume_volume_sym(W6D,X,Y,Z,Xp,Yp,Zp,ko_grfn,r_m,r_n,dx,1,1);
+    end
+                
+    % zero all elements within the medium interaction range (see remark above)
+    G_mn(1:n_mediumL,1:n_mediumM,1:n_mediumN,:) = zeros(n_mediumL,n_mediumM,n_mediumN,10);
+    % and now properly insert the near G_mn elements in the 'G_mn' tensor. 
+    for dum = 1:size(inter_idx,1)
+        [mx,my,mz] = ind2sub(size(G_mn),inter_idx(dum));
+ 
+        % this is only half (1/8 of complete angle around the x-axis);
+        % must copy to the other half, to cover the full quadrant
+        
+        % everything along x, first half of the quadrant
+        
+        % Gx,x
+        G_mn(mx,my,mz,1) = K_tmp(dum,1);
+        % G2D,x
+        G_mn(mx,my,mz,2) = -K_tmp(dum,2);
+        % Gx,2D
+        G_mn(mx,my,mz,4) = K_tmp(dum,2);
+        % G2D,2D
+        % linear(x)-linear(x') part
+        G_mn(mx,my,mz,6) = G_mn(mx,my,mz,6) + K_tmp(dum,3);
+        % G2D,3D
+        % linear(x)-linear(x') part
+        G_mn(mx,my,mz,9) = G_mn(mx,my,mz,9) + K_tmp(dum,3);
+        % G3D,3D
+        % linear(x)-linear(x') part
+        G_mn(mx,my,mz,10) = G_mn(mx,my,mz,10) + K_tmp(dum,3);
+
+        % everything along x, second half of the quadrant (exchanging y and z)
+        
+        % Gx,x
+        G_mn(mx,mz,my,1) = K_tmp(dum,1);
+        % G2D,x
+        G_mn(mx,mz,my,2) = -K_tmp(dum,2);
+        % Gx,2D
+        G_mn(mx,mz,my,4) = K_tmp(dum,2);
+        % G2D,2D
+        % linear(x)-linear(x') part
+        G_mn(mx,mz,my,6) = G_mn(mx,mz,my,6) + K_tmp(dum,3);
+        % G2D,3D
+        % linear(x)-linear(x') part
+        G_mn(mx,mz,my,9) = G_mn(mx,mz,my,9) + K_tmp(dum,3);
+        % G3D,3D
+        % linear(x)-linear(x') part
+        G_mn(mx,mz,my,10) = G_mn(mx,mz,my,10) + K_tmp(dum,3);
+
+        
+        % everything along y
+
+        % G2D,y
+        G_mn(mz,mx,my,3) = K_tmp(dum,2);
+        % Gy,2D
+        G_mn(mz,mx,my,5) = -K_tmp(dum,2);
+        % G2D,2D
+        % linear(y)-linear(y') part
+        G_mn(mz,mx,my,6) = G_mn(mz,mx,my,6) + K_tmp(dum,3);
+        % G2D,3D
+        % linear(y)-linear(y') part
+        G_mn(mz,mx,my,9) = G_mn(mz,mx,my,9) - K_tmp(dum,3);
+        % G3D,3D
+        % linear(y)-linear(y') part
+        G_mn(mz,mx,my,10) = G_mn(mz,mx,my,10) + K_tmp(dum,3);
+
+        % everything along y, second half of the quadrant (exchanging x and z)
+
+        % G2D,y
+        G_mn(my,mx,mz,3) = K_tmp(dum,2);
+        % Gy,2D
+        G_mn(my,mx,mz,5) = -K_tmp(dum,2);
+        % G2D,2D
+        % linear(y)-linear(y') part
+        G_mn(my,mx,mz,6) = G_mn(my,mx,mz,6) + K_tmp(dum,3);
+        % G2D,3D
+        % linear(y)-linear(y') part
+        G_mn(my,mx,mz,9) = G_mn(my,mx,mz,9) - K_tmp(dum,3);
+        % G3D,3D
+        % linear(y)-linear(y') part
+        G_mn(my,mx,mz,10) = G_mn(my,mx,mz,10) + K_tmp(dum,3);
+
+        
+        % everything along z
+
+        % Gz,3D
+        G_mn(my,mz,mx,7) = -2*K_tmp(dum,2);
+        % G3D,z
+        G_mn(my,mz,mx,8) = 2*K_tmp(dum,2);
+        % G3D,3D
+        % linear(z)-linear(z') part
+        G_mn(my,mz,mx,10) = G_mn(my,mz,mx,10) + 4*K_tmp(dum,3);
+
+        % everything along z, second half of the quadrant (exchanging x and y)
+
+        % Gz,3D
+        G_mn(mz,my,mx,7) = -2*K_tmp(dum,2);
+        % G3D,z
+        G_mn(mz,my,mx,8) = 2*K_tmp(dum,2);
+        % G3D,3D
+        % linear(z)-linear(z') part
+        G_mn(mz,my,mx,10) = G_mn(mz,my,mx,10) + 4*K_tmp(dum,3);
+        
+    end
+    disp(['Time for computing medium interactions exploiting symmetry ::: ',num2str(toc)])
+    % line commented out to use G_mn directly; even if in Matlab/Octave you might save
+    % some time to use an intermediate 'G_mn_test' smaller tensor and copy it to 'G_mn' at the end
+    %G_mn(1:n_mediumL,1:n_mediumL,1:n_mediumL,:) = G_mn_test(1:n_mediumL,1:n_mediumL,1:n_mediumL,:);
 end
-disp(['Time for computing medium interactions ::: ',num2str(toc)])
 
 % 2e) Compute interaction between near distance cells - the surface-surface integrals
 
 Np = Np_1D_near_S;
-% 4D Clenshaw - Curtis points and weights
+% 4D Gauss Legendre points and weights
 [W4D,A,B,C,D] = weights_points(Np,4);
 
 Ls = 2;Ms = 2;Ns = 2;
@@ -104,10 +291,162 @@ if L <2; Ls = 1; end
 if M <2; Ms = 1; end
 if N <2; Ns = 1;end
 
-tic
+% calculate the constant coefficinets in front of the surface-surface
+% integrals
 [I1_co, I2_co, I3_co, I4_co]  = surface_surface_coeff(dx,ko_grfn);
 
-if (lse_enhanced_parallel == 1)
+if (lse_enhanced_near == 2 && Ls == Ms && Ls == Ns)
+  
+    % compute interactions exploiting symmetry
+    % remark: volume must be cubic, i.e. 'Ls' = 'Ms' = 'Ns'
+    % remark: MUST zero the elements 6,9,10 in the last mode of the tensor,
+    %         as these calculations use accumulation 
+    %         (e.g. G_mn(mx,my,mz,6) = G_mn(mx,my,mz,6) + K(3);) 
+
+    tic
+    
+    % let's get the indexes of the voxels that we need to consider
+    % for the interactions. Note that we consider only half of the voxels 
+    % (plus the diagonal). In 2D this is n*(n+1)/2, in 3D n*n*(n+1)/2 of course
+    inter_idx = zeros( (Ls * (Ms + 1) * Ns) / 2,1);
+    dum = 1;
+    for mx = 1:Ls
+        for my = 1:Ms
+            % to further exploit symmetry, let's calculate only helf of the quadrant
+            for mz = 1:my
+                inter_idx(dum) = sub2ind(size(G_mn), mx, my, mz);
+                dum = dum + 1;
+            end
+        end
+    end
+
+    % Now let's create a temporary storage for the kernels calculated for
+    % each voxel (three).
+    % This is needed as MatLab does not like the (apparently) random 
+    % insertion of elements in a matrix, plus some elements of G_mn
+    % calculated via symmetry needs accumulation, so different threads
+    % may try to access the same element at the same time, must avoid that
+    K_tmp = zeros(Ls * Ms * Ns, 3);
+    parfor dum = 1:size(inter_idx,1)
+      
+        [mx,my,mz] = ind2sub(size(G_mn),inter_idx(dum));
+        m = [mx,my,mz];
+        % centre of the observation voxel
+        r_m = ((m-1) .* d)';
+
+        % 1) calculate near interactions with singularity subtraction
+        % method. VV for the smoothed kernel, SS for 1/R, SS for R/2
+        I_V_smooth = volume_volume_sym(W6D,X,Y,Z,Xp,Yp,Zp,ko_grfn,r_m,r_n,dx,4,1);
+        I_S2 = surface_surface_kernels_sym(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,2,1);
+        I_S3 = surface_surface_kernels_sym(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,3,1);
+
+        K_tmp(dum,:) = I_V_smooth + I_S2 + I_S3;
+    end
+                
+    % zero all elements within the medium interaction range (see remark above)
+    G_mn(1:Ls,1:Ms,1:Ns,:) = zeros(Ls,Ms,Ns,10);
+    % and now properly insert the near G_mn elements in the 'G_mn' tensor. 
+    for dum = 1:size(inter_idx,1)
+        [mx,my,mz] = ind2sub(size(G_mn),inter_idx(dum));
+ 
+        % this is only half (1/8 of complete angle around the x-axis);
+        % must copy to the other half, to cover the full quadrant
+        
+        % everything along x, first half of the quadrant
+        
+        % Gx,x
+        G_mn(mx,my,mz,1) = K_tmp(dum,1);
+        % G2D,x
+        G_mn(mx,my,mz,2) = -K_tmp(dum,2);
+        % Gx,2D
+        G_mn(mx,my,mz,4) = K_tmp(dum,2);
+        % G2D,2D
+        % linear(x)-linear(x') part
+        G_mn(mx,my,mz,6) = G_mn(mx,my,mz,6) + K_tmp(dum,3);
+        % G2D,3D
+        % linear(x)-linear(x') part
+        G_mn(mx,my,mz,9) = G_mn(mx,my,mz,9) + K_tmp(dum,3);
+        % G3D,3D
+        % linear(x)-linear(x') part
+        G_mn(mx,my,mz,10) = G_mn(mx,my,mz,10) + K_tmp(dum,3);
+
+        % everything along x, second half of the quadrant (exchanging y and z)
+        
+        % Gx,x
+        G_mn(mx,mz,my,1) = K_tmp(dum,1);
+        % G2D,x
+        G_mn(mx,mz,my,2) = -K_tmp(dum,2);
+        % Gx,2D
+        G_mn(mx,mz,my,4) = K_tmp(dum,2);
+        % G2D,2D
+        % linear(x)-linear(x') part
+        G_mn(mx,mz,my,6) = G_mn(mx,mz,my,6) + K_tmp(dum,3);
+        % G2D,3D
+        % linear(x)-linear(x') part
+        G_mn(mx,mz,my,9) = G_mn(mx,mz,my,9) + K_tmp(dum,3);
+        % G3D,3D
+        % linear(x)-linear(x') part
+        G_mn(mx,mz,my,10) = G_mn(mx,mz,my,10) + K_tmp(dum,3);
+
+        
+        % everything along y
+
+        % G2D,y
+        G_mn(mz,mx,my,3) = K_tmp(dum,2);
+        % Gy,2D
+        G_mn(mz,mx,my,5) = -K_tmp(dum,2);
+        % G2D,2D
+        % linear(y)-linear(y') part
+        G_mn(mz,mx,my,6) = G_mn(mz,mx,my,6) + K_tmp(dum,3);
+        % G2D,3D
+        % linear(y)-linear(y') part
+        G_mn(mz,mx,my,9) = G_mn(mz,mx,my,9) - K_tmp(dum,3);
+        % G3D,3D
+        % linear(y)-linear(y') part
+        G_mn(mz,mx,my,10) = G_mn(mz,mx,my,10) + K_tmp(dum,3);
+
+        % everything along y, second half of the quadrant (exchanging x and z)
+
+        % G2D,y
+        G_mn(my,mx,mz,3) = K_tmp(dum,2);
+        % Gy,2D
+        G_mn(my,mx,mz,5) = -K_tmp(dum,2);
+        % G2D,2D
+        % linear(y)-linear(y') part
+        G_mn(my,mx,mz,6) = G_mn(my,mx,mz,6) + K_tmp(dum,3);
+        % G2D,3D
+        % linear(y)-linear(y') part
+        G_mn(my,mx,mz,9) = G_mn(my,mx,mz,9) - K_tmp(dum,3);
+        % G3D,3D
+        % linear(y)-linear(y') part
+        G_mn(my,mx,mz,10) = G_mn(my,mx,mz,10) + K_tmp(dum,3);
+
+        
+        % everything along z
+
+        % Gz,3D
+        G_mn(my,mz,mx,7) = -2*K_tmp(dum,2);
+        % G3D,z
+        G_mn(my,mz,mx,8) = 2*K_tmp(dum,2);
+        % G3D,3D
+        % linear(z)-linear(z') part
+        G_mn(my,mz,mx,10) = G_mn(my,mz,mx,10) + 4*K_tmp(dum,3);
+
+        % everything along z, second half of the quadrant (exchanging x and y)
+
+        % Gz,3D
+        G_mn(mz,my,mx,7) = -2*K_tmp(dum,2);
+        % G3D,z
+        G_mn(mz,my,mx,8) = 2*K_tmp(dum,2);
+        % G3D,3D
+        % linear(z)-linear(z') part
+        G_mn(mz,my,mx,10) = G_mn(mz,my,mx,10) + 4*K_tmp(dum,3);
+        
+    end
+    
+    disp(['Time for computing near interactions exploiting symmetry ::: ',num2str(toc)])
+    
+elseif (lse_enhanced_near == 1)
     % Parallelization requires the maximum number of threads working in
     % parallel. So if we use nested 'for' loops, only the external
     % one can be parallelized, and this is the ultimate limit of 
@@ -174,6 +513,9 @@ if (lse_enhanced_parallel == 1)
                 [mx,my,mz] = ind2sub(size(G_mn),near_idx(dum));
                 G_mn(mx,my,mz,:) = G_mn_tmp(dum,:);
     end
+    
+    disp(['Time for computing near interactions using parallelization ::: ',num2str(toc)])
+
 % old code, loosely parallelized    
 else
     parfor mx = 1:Ls
@@ -184,25 +526,20 @@ else
                 % centre of the observation voxel
                 r_m = ((m-1) .* d)';
 
-                %%%[I1,I2,I3,I4] = surface_surface_kernels(W,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx);
-                %%%
-                %%% multiply the values by the constant coefficients
-                %%% and return the sum over the 36 faces
-                %%G_mn(mx,my,mz,:) = surface_surface_coeff(I1,I2,I3,I4,dx,ko_grfn); 
-
-                % uncomment the following due to selection of the calculation
-                % method
 
                 % 1) calculate near interactions with singularity subtraction
-                % method. VV for the smoothed kernel, SS for 1/R, SS for R/2
+            % method. volume-volume for the smoothed kernel, surface-surface for 1/R, surface-surface for R
 
+            % non-singular, smooth kernel:  KER = 1/4/pi * ( exp(-1j*k0*R) - 1.0 ) ./R + k0^2/8/pi * R;
                 I_V_smooth = volume_volume(W6D,X,Y,Z,Xp,Yp,Zp,ko_grfn,r_m,r_n,dx,4);
 
+            % singular kernel: KER =  1/(4*pi*R) with surface-surface formulas
                 I_S2 = surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,2);
-                %[T,I_S2] = evalc('surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,2);');
 
+            % singular kernel: KER = -ko^2/(8*pi)*R with surface-surface formulas
                 I_S3 = surface_surface_kernels(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,3);
 
+            % take the sum of them according to eq. 17 of the report
                 G_mn(mx,my,mz,:) = I_V_smooth + I_S2 + I_S3;
 
                 % 2) calculate near interactions with VV to SS formulas for G
@@ -213,9 +550,10 @@ else
         end
     end
     
+    disp(['Time for computing near interactions ::: ',num2str(toc)])
 end
 
-disp(['Time for computing near interactions ::: ',num2str(toc)])
+
 
 G_mn = G_mn /dx^4 * ko^2;
 
