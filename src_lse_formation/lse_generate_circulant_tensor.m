@@ -6,11 +6,13 @@ function [fN_all,st_sparse_precon] = lse_generate_circulant_tensor(dx,ko,L,M,N,f
 % L=5; M=5; N=5
 % fl_comp_fullmat = 1;
 
-% if 'lse_enhanced_near' == 2, exploit symmetry when calculating G_mn terms
+% if 'lse_enhanced_near' == 3, use pre-calculated near interactions when 
+%     calculating near G_mn terms
+% if 'lse_enhanced_near' == 2, exploit symmetry when calculating near G_mn terms
 % if 'lse_enhanced_near' == 1, unroll the for loops to improve
 %     parallelization for near interactions calculation
 % if 'lse_enhanced_near' == 0, use the original brute force way to compute G_mn terms
-lse_enhanced_near = 2;
+lse_enhanced_near = 3;
 % if 'lse_exploit_symmetry' == 0, use the original brute force way to compute G_mn terms
 % if 'lse_exploit_symmetry' == 1, exploit symmetry when calculating G_mn terms
 lse_exploit_symmetry = 1;
@@ -162,7 +164,7 @@ else
     % insertion of elements in a matrix, plus some elements of G_mn
     % calculated via symmetry needs accumulation, so different threads
     % may try to access the same element at the same time, must avoid that
-    K_tmp = zeros(n_mediumL * n_mediumM * n_mediumN, 3);
+    K_tmp = zeros(size(inter_idx,1), 3);
     parfor dum = 1:size(inter_idx,1)
       
         [mx,my,mz] = ind2sub(size(G_mn),inter_idx(dum));
@@ -295,7 +297,184 @@ if N <2; Ns = 1;end
 % integrals
 [I1_co, I2_co, I3_co, I4_co]  = surface_surface_coeff(dx,ko_grfn);
 
-if (lse_enhanced_near == 2 && Ls == Ms && Ls == Ns)
+if (lse_enhanced_near == 3 && Ls == Ms && Ls == Ns)
+  
+    % compute interactions using pre-calculated near interactions
+    % and exploiting symmetry
+    % remark: volume must be cubic, i.e. 'Ls' = 'Ms' = 'Ns'
+    % remark: MUST zero the elements 6,9,10 in the last mode of the tensor,
+    %         as these calculations use accumulation 
+    %         (e.g. G_mn(mx,my,mz,6) = G_mn(mx,my,mz,6) + K(3);) 
+
+    tic
+    
+    % let's get the indexes of the voxels that we need to consider
+    % for the interactions. Note that we consider only half of the voxels 
+    % (plus the diagonal). In 2D this is n*(n+1)/2, in 3D n*n*(n+1)/2 of course
+    inter_idx = zeros( (Ls * (Ms + 1) * Ns) / 2,1);
+    dum = 1;
+    for mx = 1:Ls
+        for my = 1:Ms
+            % to further exploit symmetry, let's calculate only helf of the quadrant
+            for mz = 1:my
+                inter_idx(dum) = sub2ind(size(G_mn), mx, my, mz);
+                dum = dum + 1;
+            end
+        end
+    end
+
+    % Now let's create a temporary storage for the kernels calculated for
+    % each voxel (three).
+    % This is needed as MatLab does not like the (apparently) random 
+    % insertion of elements in a matrix, plus some elements of G_mn
+    % calculated via symmetry needs accumulation, so different threads
+    % may try to access the same element at the same time, must avoid that
+    K_tmp = zeros(size(inter_idx,1), 3);
+
+    % load the pre-calculated near interactions
+    K_tmp = dlmread(['src_lin_vie', filesep(), 'K_near_interactions_1mm.txt']);
+    
+    if(size(inter_idx,1) ~= size(K_tmp,1))
+        disp(['ERROR: loaded K-interactions matrix with length  ', num2str(size(K_load,1)), ' while we expected ', num2str(size(inter_idx,1))]);
+    end
+    
+    % scale the K_tmp terms. The method leverages the fact that the kernel has
+    % the special property that g(k*r) = f(k) * g(r).
+    % In 1D, we use this fact to transform the integral 
+    %
+    %  /kb
+    %  | g(x)dx 
+    % /ka
+    %
+    % to a standard form
+    %
+    %  /a
+    %  | g(y)dy
+    % /b
+    %
+    % So transforming x = k*y we have
+    %
+    %  /kb        /b               /b                         /b
+    %  | g(x)dx = | g(k*y)*k*dy =  | f(k)*g(y)*k*dy = g(k)*k* | g(y)dy
+    % /ka        /a               /a                         /a  
+    %
+    % and in particular, being the kernel 1/r, we have g(k*r) = 1/k * g(r)
+    % while the Jacobian is k^3, and we have a double integral, that gives k^3 * k*3,
+    % therefore we multiply by k^5
+    % The same works for the kernel x*1/r, where g(k*r) = k/k * g(r) = g(r)
+    % so we multiply by k^6
+    % And of course for the kernel x*x'*1/r, where g(r*k) = k^2/k * g(r) = k*g(r)
+    % so we multiply by k^7
+    
+    K_scale = dx / 1e-3;
+    K_tmp(:,1) = K_tmp(:,1) * K_scale ^ 5;
+    K_tmp(:,2) = K_tmp(:,2) * K_scale ^ 6;
+    K_tmp(:,3) = K_tmp(:,3) * K_scale ^ 7;
+     
+    % zero all elements within the near interaction range (see remark above)
+    G_mn(1:Ls,1:Ms,1:Ns,:) = zeros(Ls,Ms,Ns,10);
+    % and now properly insert the near G_mn elements in the 'G_mn' tensor. 
+    for dum = 1:size(inter_idx,1)
+        [mx,my,mz] = ind2sub(size(G_mn),inter_idx(dum));
+ 
+        % this is only half (1/8 of complete angle around the x-axis);
+        % must copy to the other half, to cover the full quadrant
+        
+        % everything along x, first half of the quadrant
+        
+        % Gx,x
+        G_mn(mx,my,mz,1) = K_tmp(dum,1);
+        % G2D,x
+        G_mn(mx,my,mz,2) = -K_tmp(dum,2);
+        % Gx,2D
+        G_mn(mx,my,mz,4) = K_tmp(dum,2);
+        % G2D,2D
+        % linear(x)-linear(x') part
+        G_mn(mx,my,mz,6) = G_mn(mx,my,mz,6) + K_tmp(dum,3);
+        % G2D,3D
+        % linear(x)-linear(x') part
+        G_mn(mx,my,mz,9) = G_mn(mx,my,mz,9) + K_tmp(dum,3);
+        % G3D,3D
+        % linear(x)-linear(x') part
+        G_mn(mx,my,mz,10) = G_mn(mx,my,mz,10) + K_tmp(dum,3);
+
+        % everything along x, second half of the quadrant (exchanging y and z)
+        
+        % Gx,x
+        G_mn(mx,mz,my,1) = K_tmp(dum,1);
+        % G2D,x
+        G_mn(mx,mz,my,2) = -K_tmp(dum,2);
+        % Gx,2D
+        G_mn(mx,mz,my,4) = K_tmp(dum,2);
+        % G2D,2D
+        % linear(x)-linear(x') part
+        G_mn(mx,mz,my,6) = G_mn(mx,mz,my,6) + K_tmp(dum,3);
+        % G2D,3D
+        % linear(x)-linear(x') part
+        G_mn(mx,mz,my,9) = G_mn(mx,mz,my,9) + K_tmp(dum,3);
+        % G3D,3D
+        % linear(x)-linear(x') part
+        G_mn(mx,mz,my,10) = G_mn(mx,mz,my,10) + K_tmp(dum,3);
+
+        
+        % everything along y
+
+        % G2D,y
+        G_mn(mz,mx,my,3) = K_tmp(dum,2);
+        % Gy,2D
+        G_mn(mz,mx,my,5) = -K_tmp(dum,2);
+        % G2D,2D
+        % linear(y)-linear(y') part
+        G_mn(mz,mx,my,6) = G_mn(mz,mx,my,6) + K_tmp(dum,3);
+        % G2D,3D
+        % linear(y)-linear(y') part
+        G_mn(mz,mx,my,9) = G_mn(mz,mx,my,9) - K_tmp(dum,3);
+        % G3D,3D
+        % linear(y)-linear(y') part
+        G_mn(mz,mx,my,10) = G_mn(mz,mx,my,10) + K_tmp(dum,3);
+
+        % everything along y, second half of the quadrant (exchanging x and z)
+
+        % G2D,y
+        G_mn(my,mx,mz,3) = K_tmp(dum,2);
+        % Gy,2D
+        G_mn(my,mx,mz,5) = -K_tmp(dum,2);
+        % G2D,2D
+        % linear(y)-linear(y') part
+        G_mn(my,mx,mz,6) = G_mn(my,mx,mz,6) + K_tmp(dum,3);
+        % G2D,3D
+        % linear(y)-linear(y') part
+        G_mn(my,mx,mz,9) = G_mn(my,mx,mz,9) - K_tmp(dum,3);
+        % G3D,3D
+        % linear(y)-linear(y') part
+        G_mn(my,mx,mz,10) = G_mn(my,mx,mz,10) + K_tmp(dum,3);
+
+        
+        % everything along z
+
+        % Gz,3D
+        G_mn(my,mz,mx,7) = -2*K_tmp(dum,2);
+        % G3D,z
+        G_mn(my,mz,mx,8) = 2*K_tmp(dum,2);
+        % G3D,3D
+        % linear(z)-linear(z') part
+        G_mn(my,mz,mx,10) = G_mn(my,mz,mx,10) + 4*K_tmp(dum,3);
+
+        % everything along z, second half of the quadrant (exchanging x and y)
+
+        % Gz,3D
+        G_mn(mz,my,mx,7) = -2*K_tmp(dum,2);
+        % G3D,z
+        G_mn(mz,my,mx,8) = 2*K_tmp(dum,2);
+        % G3D,3D
+        % linear(z)-linear(z') part
+        G_mn(mz,my,mx,10) = G_mn(mz,my,mx,10) + 4*K_tmp(dum,3);
+        
+    end
+    
+    disp(['Time for computing near interactions exploiting symmetry ::: ',num2str(toc)])
+    
+elseif (lse_enhanced_near == 2 && Ls == Ms && Ls == Ns)
   
     % compute interactions exploiting symmetry
     % remark: volume must be cubic, i.e. 'Ls' = 'Ms' = 'Ns'
@@ -326,7 +505,7 @@ if (lse_enhanced_near == 2 && Ls == Ms && Ls == Ns)
     % insertion of elements in a matrix, plus some elements of G_mn
     % calculated via symmetry needs accumulation, so different threads
     % may try to access the same element at the same time, must avoid that
-    K_tmp = zeros(Ls * Ms * Ns, 3);
+    K_tmp = zeros(size(inter_idx,1), 3);
     parfor dum = 1:size(inter_idx,1)
       
         [mx,my,mz] = ind2sub(size(G_mn),inter_idx(dum));
@@ -341,9 +520,13 @@ if (lse_enhanced_near == 2 && Ls == Ms && Ls == Ns)
         I_S3 = surface_surface_kernels_sym(I1_co,I2_co,I3_co,I4_co,W4D,A,B,C,D,Np,ko_grfn,r_m,r_n,m,dx,3,1);
 
         K_tmp(dum,:) = I_V_smooth + I_S2 + I_S3;
+        
     end
+    
+    % export the 'K_tmp' array for re-using in fastest near interaction computation
+    %dlmwrite(['src_lin_vie', filesep(), 'K_near_interactions_1mm.txt'], K_tmp, 'precision', 16);
                 
-    % zero all elements within the medium interaction range (see remark above)
+    % zero all elements within the near interaction range (see remark above)
     G_mn(1:Ls,1:Ms,1:Ns,:) = zeros(Ls,Ms,Ns,10);
     % and now properly insert the near G_mn elements in the 'G_mn' tensor. 
     for dum = 1:size(inter_idx,1)
