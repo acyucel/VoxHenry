@@ -2,7 +2,7 @@ function lse_sparse_precon_prepare(dx,freq,OneoverMc,idxS3,st_sparse_precon,node
 global A_inv LL UU PP QQ RR Sch_sparse slct_decomp_sch fl_cholmod
 
 %slct_decomp_sch='ldlt_decomp'; %'chol_decomp','no_decomp','ldlt_decomp','chol_decomp'
-if(exist ("OCTAVE_VERSION", "builtin") > 0)
+if(exist ('OCTAVE_VERSION', 'builtin') > 0)
     % Note: 'fl_cholmod' cannot be used under Octave, not supported
     %       'ldlt_decomp' has not been ported under Octave yet
     slct_decomp_sch='lu_decomp'; %'no_decomp','lu_decomp','ldlt_decomp','chol_decomp'

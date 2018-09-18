@@ -14,7 +14,7 @@ function [atype,afun,afcnstr] = iterchk(A)
 %   $Revision: 1.8.4.2 $ $Date: 2004/12/06 16:35:56 $
 
 % if running under Octave, use the fcnchk_octave() alternative version
-if(exist ("OCTAVE_VERSION", "builtin") > 0)
+if(exist ('OCTAVE_VERSION', 'builtin') > 0)
    [afun,afunmsg] = fcnchk_octave(A);  
 else
    [afun,afunmsg] = fcnchk(A);

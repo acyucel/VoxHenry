@@ -58,7 +58,7 @@ hold on
 h=loglog(fH_data(:,1),1e12*imag(fH_data(:,2)),'ro'); set(h,'LineWidth',2);
 legend('VoxHenry','FastHenry');
 axis tight;grid on;xlabel('Frequency (Hz)');ylabel('Inductance (pH)');
-if(exist ("OCTAVE_VERSION", "builtin") > 0)
+if(exist ('OCTAVE_VERSION', 'builtin') > 0)
     % need to work-around Octave limit/bug with low ylim values
     ylim(gca, 'auto');
 else

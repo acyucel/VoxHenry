@@ -22,7 +22,7 @@ else
 
   % if running under Octave, use the mex build specific linear_build
   % remark: not ported for Linux yet!
-  if(exist ("OCTAVE_VERSION", "builtin") > 0)
+  if(exist ('OCTAVE_VERSION', 'builtin') > 0)
       linear_build_octave
   else
       linear_build

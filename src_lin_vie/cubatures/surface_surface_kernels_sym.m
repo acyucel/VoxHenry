@@ -201,7 +201,7 @@ for face = 1:6
     end
 end
 
-% take the su
+% take the sum of the 36 face-face integrals according to reports eq. 15 
 I_SK = zeros(10,1);
 for l = l_vals
     

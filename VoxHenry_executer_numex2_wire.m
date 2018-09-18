@@ -13,6 +13,7 @@ freq = [1e0 2.5e0 5e0 7.5e0 1e1 2.5e1 5e1 7.5e1 1e2 2.5e2 5e2 7.5e2 ...
     1e3 2.5e3 5e3 7.5e3 1e4 2.5e4 5e4 7.5e4 1e5 2.5e5 5e5 7.5e5 ...
     1e6 2.5e6 5e6 7.5e6 1e7 2.5e7 5e7 7.5e7 1e8 2.5e8 5e8 7.5e8 ...
     1e9 2.5e9 5e9 7.5e9 1e10] ; % frequency
+%freq = [1e10] ; % frequency
 num_freq = length(freq);
 er = 0;  % epsilon_r of conductors
 se=5.8e7; % conductivity of conductors
@@ -170,14 +171,15 @@ for port_no=1:num_ports
     
     if (port_no == 1)
         tini = tic;
-        if (num_freq == 1)
-            fl_no_fft=0;
-            [fN_all,st_sparse_precon] = lse_generate_circulant_tensor(dx,ko,L,M,N,fl_no_fft);
-        else
-            fl_no_fft=1;
-            [fN_all2,st_sparse_precon2] = lse_generate_circulant_tensor(dx,1,L,M,N,fl_no_fft);
-            % note multiply fN_all and st_sparse_precon with ko^2 and compute its FFT
-        end
+        
+        % no need to delay computation of FFT. FFT is a linear operator, and as the frequency-dependent
+        % part is not in the circulant tensor, we can just multiply later on by 'ko^2'
+        fl_no_fft=0;
+        [fN_all2,st_sparse_precon2] = lse_generate_circulant_tensor(dx,1,L,M,N,fl_no_fft);
+        % note: must still 'multiply fN_all2' and 'st_sparse_precon2' by 'ko^2' ('ko' is frequency dependent)
+        % ( here we set ko = 1 when calling 'lse_generate_circulant_tensor', in the the second parameter,
+        % so 'lse_generate_circulant_tensor' will not multiply by the actual 'ko')
+
         tend = toc(tini);
         disp(['Total time for getting circulant tensor ::: ' ,num2str(tend)]);
 
@@ -207,14 +209,14 @@ Z_mat=zeros(num_ports,num_ports,num_freq);
 R_jL_mat=zeros(num_ports,num_ports,num_freq);
 for freq_no=1:num_freq
     tinisim = tic;
-    if (num_freq > 1)
-        freq = freq_all(freq_no);
-        if (freq < 1e6)
-            tol = 1e-12;
-        else
-            tol = 1e-8;
-        end
+
+    freq = freq_all(freq_no);
+    if (freq < 1e6)
+        tol = 1e-12;
+    else
+        tol = 1e-8;
     end
+
     EMconstants
     disp('-----------------------------------------------------')
     disp(['Simulation for frequency : ',num2str(freq),' started! ', 'freq pnt: ',num2str(freq_no), ' / ', num2str(num_freq)])
@@ -225,11 +227,14 @@ for freq_no=1:num_freq
     OneoverMc = 1.0 ./ Mc; % one over susceptibility
     
     % circulant tensor for the current frequency
-    if (num_freq > 1)
-        fN_all = fN_all2*(ko^2);
-        fN_all = fft_operator(fN_all);
-        st_sparse_precon = st_sparse_precon2 * (ko^2);
-    end
+
+    % no need to compute FFT every time, we already calculated it once for all.
+    % FFT is a linear operator, and as the frequency-dependent
+    % part is not in the circulant tensor, we can just multiply on by 'ko^2'
+    fN_all = fN_all2*(ko^2);
+    %fN_all = fft_operator(fN_all);
+    st_sparse_precon = st_sparse_precon2 * (ko^2);
+
     sim_CPU_lse(freq_no,1,1)=toc(tinisim); % CPU time for FFT + prep data
     
     for port_no=1:num_ports
