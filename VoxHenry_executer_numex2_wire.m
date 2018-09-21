@@ -1,4 +1,8 @@
 clc; close all; clear all; format long e;
+global fl_sparseprecon
+
+% for debug only
+global A_inv LL UU PP QQ RR Sch_sparse slct_decomp_sch fl_cholmod
 
 % -------------------------------------------------------------------------
 %                  Add the Current Path to Workspace
@@ -24,7 +28,10 @@ fl_check_geo=0; % set to 1 for only plotting the domain (no simulation)
 fl_check_ports=0; % set to 1 for only plotting the port nodes (no simulation)
 plot_option=1; % see the options of plotting in Visualization part
 freq_curr_plot=2.5e9; % frequency for plotting currents
-simple_post_proc = 0; % if 1, just plot the current densities in 3D
+simple_post_proc = 1; % if 1, just plot the current densities in 3D
+
+% use or do not use preconditioner
+fl_sparseprecon = 1;
 
 % -------------------------------------------------------------------------
 %                  Inputs for the Structure
@@ -36,6 +43,8 @@ simple_post_proc = 0; % if 1, just plot the current densities in 3D
 num_ports = 1; % number of ports
 len_cond=50.0e-6; % length of conductors
 dia_cond=10.0e-6; % diameter of conductor
+%len_cond=2.0e-6; % length of conductors
+%dia_cond=4.0e-6; % diameter of conductor
 rad_cond=dia_cond/2; % radius of conductor
 cen_cond1=[len_cond/2 dia_cond/2 dia_cond/2];
 Cnt = [cen_cond1;]; % centers of conductors
@@ -222,7 +231,7 @@ for freq_no=1:num_freq
     disp(['Simulation for frequency : ',num2str(freq),' started! ', 'freq pnt: ',num2str(freq_no), ' / ', num2str(num_freq)])
     
     % setting new constitutive parameters for new freq
-    Mr = epsilon_r - 1j*sigma_e/(eo*omega); % permittivity
+    Mr = epsilon_r - 1j*sigma_e/(eo*omega); % complex relative permittivity
     Mc = Mr - 1.0; % susceptibility
     OneoverMc = 1.0 ./ Mc; % one over susceptibility
     

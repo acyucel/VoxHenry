@@ -1,6 +1,13 @@
 function lse_sparse_precon_prepare(dx,freq,OneoverMc,idxS3,st_sparse_precon,nodeid_4_grnd,nodeid_4_injectcurr,Ae)
 global A_inv LL UU PP QQ RR Sch_sparse slct_decomp_sch fl_cholmod
+global fl_sparseprecon
 
+if (fl_sparseprecon == 0)
+    disp(['Not using any preconditioner'])
+    return
+end
+    
+    
 %slct_decomp_sch='ldlt_decomp'; %'chol_decomp','no_decomp','ldlt_decomp','chol_decomp'
 if(exist ('OCTAVE_VERSION', 'builtin') > 0)
     % Note: 'fl_cholmod' cannot be used under Octave, not supported
@@ -9,7 +16,7 @@ if(exist ('OCTAVE_VERSION', 'builtin') > 0)
 else 
     slct_decomp_sch='ldlt_decomp'; %'no_decomp','lu_decomp','ldlt_decomp','chol_decomp'
 end
-    
+
 fl_cholmod = 1; % flag for using CHOLMOD in suitesparse for fast and memory-efficient LDLT factorization and inversion
 fl_volt_source = 2; % symmetric voltage source implementation
 fl_profile = 0; % cpu and memory profiling
@@ -29,6 +36,8 @@ eo = 1/co^2/mu;
 
 % 1) Compute A_inv matrix
 tic
+% take one value only of 'OneoverMc' (from the first non-empty voxel)
+% Note that taking OneoverMc this way assumes that all conductors have the same conductivity
 OneoverMc_dum=OneoverMc(idxS3(1));
 diag_pulse=1/((1/(j*omega*eo))*((1/dx*OneoverMc_dum)-st_sparse_precon(1)));
 diag_2Dlinear=1/((1/(j*omega*eo))*((dx/6*OneoverMc_dum*(1/(dx^2)))-st_sparse_precon(2)));

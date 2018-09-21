@@ -2,6 +2,12 @@
 function [JOut_full_out]=lse_sparse_precon_multiply(JOut_full_in,Ae,nodeid_4_grnd,nodeid_4_injectcurr)
 
 global A_inv LL UU PP QQ RR Sch_sparse slct_decomp_sch fl_cholmod
+global fl_sparseprecon
+
+if (fl_sparseprecon == 0)
+    JOut_full_out = JOut_full_in;
+    return
+end
 
 % ---------------------------------------------------------------------
 % Sparse preconditioner [E F; G H]
@@ -54,6 +60,9 @@ switch slct_decomp_sch
             end
             
         else % current source or symmetic voltage source
+            
+            %d = S^-1*(b - Ar*Y^-1*a)
+            %c = Y^-1*(a + Ar'*d)
             
             if (fl_fast_multiply == 1)
                 
@@ -259,4 +268,5 @@ switch slct_decomp_sch
         
 end
 
-fprintf ('.') ;
+% moving the printing of dots to the 'lse_matvect_mult.m' function
+%fprintf ('.') ;

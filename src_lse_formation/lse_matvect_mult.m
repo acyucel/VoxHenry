@@ -1,12 +1,13 @@
 function [JOut_full]=lse_matvect_mult(JIn0, fN_all, Ae, OneoverMc, dx, freq, idx, nodeid_4_grnd,nodeid_4_injectcurr)
-
+global fl_sparseprecon
 
 % -------------------------------------------------------------------------
 % Prepare data
 % -------------------------------------------------------------------------
 
 fl_volt_source = 2; %symmetric voltage source
-fl_sparseprecon = 1;
+% moved to global scope
+%fl_sparseprecon = 1;
 fl_gpu = 0;
 fl_profile = 0;
 
@@ -172,4 +173,6 @@ if(fl_profile == 1); disp(['Time for matvect - sparse preconditioner part::: ',n
 % JOut_full(num_curr+1:num_curr+num_node) = JOut_full(num_curr+1:num_curr+num_node)...
 %     +QQ * (UU \ (LL \ (PP * (RR \ (JOut_full_in(num_curr+1:num_curr+num_node))))));
 
+% typing one dot for each iteratative solution multiplication step
+fprintf ('.') ;
 
