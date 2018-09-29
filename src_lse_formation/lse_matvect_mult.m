@@ -1,13 +1,11 @@
 function [JOut_full]=lse_matvect_mult(JIn0, fN_all, Ae, OneoverMc, dx, freq, idx, nodeid_4_grnd,nodeid_4_injectcurr)
-global fl_sparseprecon
+global fl_precon_type
 
 % -------------------------------------------------------------------------
 % Prepare data
 % -------------------------------------------------------------------------
 
 fl_volt_source = 2; %symmetric voltage source
-% moved to global scope
-%fl_sparseprecon = 1;
 fl_gpu = 0;
 fl_profile = 0;
 
@@ -138,11 +136,17 @@ JOut_full(1:num_curr) = JOut_full(1:num_curr) - (Ae'*JIn0(num_curr+1:num_curr+nu
 
 JOut_full(num_curr+1:num_curr+num_node) = Ae*JIn0(1:num_curr);
 
-% For "well-conditioning"
-JOut_full(num_curr+nodeid_4_grnd) = JIn0(num_curr+nodeid_4_grnd);
+% this is not needed in case of Schur approximation method, because in this
+% case we have already removed the empty rows of Ae, so there is no need
+% to add dummy equations to the system (see comments in 'lse_sparse_precond_prepare.m'
+% relevant to 'DD' matrix
+if ( (strcmp(fl_precon_type, 'schur_approx') == 0) & (strcmp(fl_precon_type, 'test_no_precond') == 0) )
+    % For "well-conditioning"
+    JOut_full(num_curr+nodeid_4_grnd) = JIn0(num_curr+nodeid_4_grnd);
 
-if(fl_volt_source == 1 || fl_volt_source == 2)
-    JOut_full(num_curr+nodeid_4_injectcurr) = JIn0(num_curr+nodeid_4_injectcurr);
+    if(fl_volt_source == 1 || fl_volt_source == 2)
+        JOut_full(num_curr+nodeid_4_injectcurr) = JIn0(num_curr+nodeid_4_injectcurr);
+    end
 end
 
 if(fl_profile == 1); disp(['Time for matvect - Ae matrices part::: ',num2str(toc)]); end
@@ -151,7 +155,7 @@ if(fl_profile == 1); disp(['Time for matvect - Ae matrices part::: ',num2str(toc
 % Sparse preconditioner [E F; G H]
 % ---------------------------------------------------------------------
 tic
-if (fl_sparseprecon == 1)
+if ( (strcmp(fl_precon_type, 'no_precond') == 0) & (strcmp(fl_precon_type, 'test_no_precond') == 0) )
     [JOut_full]=lse_sparse_precon_multiply(JOut_full,Ae,nodeid_4_grnd,nodeid_4_injectcurr);
 end
 if(fl_profile == 1); disp(['Time for matvect - sparse preconditioner part::: ',num2str(toc)]); end

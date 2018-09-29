@@ -1,8 +1,8 @@
 clc; close all; clear all; format long e;
-global fl_sparseprecon
+global fl_precon_type
 
 % for debug only
-global A_inv LL UU PP QQ RR Sch_sparse slct_decomp_sch fl_cholmod
+global A_inv LL UU PP QQ RR Sch_sparse slct_decomp_sch fl_cholmod A_noninv W
 
 % -------------------------------------------------------------------------
 %                  Add the Current Path to Workspace
@@ -31,7 +31,10 @@ freq_curr_plot=2.5e9; % frequency for plotting currents
 simple_post_proc = 1; % if 1, just plot the current densities in 3D
 
 % use or do not use preconditioner
-fl_sparseprecon = 1;
+% valid values are: 'no_precond', 'schur_invert', 'schur_approx'
+%fl_precon_type = 'no_precond';
+%fl_precon_type = 'schur_approx';
+fl_precon_type = 'schur_invert';
 
 % -------------------------------------------------------------------------
 %                  Inputs for the Structure
@@ -143,7 +146,7 @@ tinisim = tic;
 %                  Obtain Nodal Incidence Matrix
 % -------------------------------------------------------------------------
 tini = tic;
-[Ae_original,nodeid_lft,nodeid_rght,nodeid_wlcond,Ae_only_leaving,Ae_only_entering_bndry] = lse_compute_Ae_matrix(idxS, grid_intcon, L, M, N, dx, pnt_lft,pnt_rght,pnt_well_cond,fl_check_ports);
+[Ae,nodeid_lft,nodeid_rght,nodeid_wlcond,Ae_only_leaving,Ae_only_entering_bndry] = lse_compute_Ae_matrix(idxS, grid_intcon, L, M, N, dx, pnt_lft,pnt_rght,pnt_well_cond,fl_check_ports);
 if (fl_check_ports == 1); return; end;
 tend = toc(tini);
 disp(['Time for generating Ae mat & finding IDs of port nodes::: ' ,num2str(tend)]);
@@ -156,11 +159,30 @@ sim_CPU_pre(1)=toc(tinisim); % CPU time for Ae
 tinisim = tic;
 disp('-----------------------------------------------------')
 disp(['Precomputing LSE data structures...'])
-tinix = tic;
-rhs_vect=zeros(size(Ae_original,1)+size(Ae_original,2),num_ports);
-for port_no=1:num_ports
 
-    Ae = Ae_original;
+%
+% circulant tensor
+%
+
+tini = tic;
+% no need to delay computation of FFT. FFT is a linear operator, and as the frequency-dependent
+% part is not in the circulant tensor, we can just multiply later on by 'ko^2'
+fl_no_fft=0;
+[fN_all2,st_sparse_precon2] = lse_generate_circulant_tensor(dx,1,L,M,N,fl_no_fft);
+% note: must still multiply 'fN_all2' and 'st_sparse_precon2' by 'ko^2' ('ko' is frequency-dependent)
+% ( here we set ko = 1 in the the second parameter when calling 'lse_generate_circulant_tensor',
+% so 'lse_generate_circulant_tensor' will not multiply by the actual 'ko')
+tend = toc(tini);
+disp(['Total time for getting circulant tensor ::: ' ,num2str(tend)]);
+   
+%
+% right-hand side(s)
+%
+   
+tinix = tic;
+
+rhs_vect=zeros(size(Ae,1)+size(Ae,2),num_ports);
+for port_no=1:num_ports
     
     % ------------------------------------------------------------------------
     %              Assign Excitation and Ground Nodes
@@ -174,33 +196,21 @@ for port_no=1:num_ports
     
     [rhs_vect(:,port_no)] = lse_compute_rhs_vector(Ae,nodeid_4_injectcurr);
    
-    % ------------------------------------------------------------------------
-    %         Generate Circulant Tensors
-    % -------------------------------------------------------------------------
-    
-    if (port_no == 1)
-        tini = tic;
+end
+% ------------------------------------------------------------------------
+% Remove rows and columns of Ae corresponding to ground and excitation nodes
+% ------------------------------------------------------------------------
+Ae(nodeid_4_grnd,:)=0;
+Ae(nodeid_4_injectcurr,:)=0;
+
         
-        % no need to delay computation of FFT. FFT is a linear operator, and as the frequency-dependent
-        % part is not in the circulant tensor, we can just multiply later on by 'ko^2'
-        fl_no_fft=0;
-        [fN_all2,st_sparse_precon2] = lse_generate_circulant_tensor(dx,1,L,M,N,fl_no_fft);
-        % note: must still 'multiply fN_all2' and 'st_sparse_precon2' by 'ko^2' ('ko' is frequency dependent)
-        % ( here we set ko = 1 when calling 'lse_generate_circulant_tensor', in the the second parameter,
-        % so 'lse_generate_circulant_tensor' will not multiply by the actual 'ko')
-
-        tend = toc(tini);
-        disp(['Total time for getting circulant tensor ::: ' ,num2str(tend)]);
-
-    end
-    
-    if (port_no == num_ports)
-        Ae = Ae_original;
-        % Remove rows and columns of Ae corresponding to ground and excitation nodes
-        Ae(nodeid_4_grnd,:)=0;
-        Ae(nodeid_4_injectcurr,:)=0;
-        clear Ae_original
-    end
+if (strcmp(fl_precon_type, 'schur_approx') == 1)
+    % length of rhs_vect is reduced of ('Ae' rows - 'Ar' rows) elements, where Ar is Ae without the rows 
+    % corresponding to the ground or excitation nodes (anyway after the first size(Ae,2) elements
+    % corresponding to the input port voltages, the 'rhs_vect' is all zeros)
+    rhs_vect = rhs_vect(1:size(rhs_vect)-size(nodeid_4_grnd,1)-size(nodeid_4_injectcurr,1), :);
+    % now remove the empty Ae rows. This should actually be 'Ar' as per VoxHenry paper
+    Ae = Ae(any(Ae,2),:);
 end
 
 tendx = toc(tinix);
@@ -268,7 +278,8 @@ for freq_no=1:num_freq
         end
         tinisim = tic;
         % Solve the system iteratively
-        % Define the handle for matvect
+        % Define the handle for matvect (remark: all other parameters beyond J
+        % are assigned at *this* time and are not modified any more later on when the function is called)
         fACPU   = @(J)lse_matvect_mult(J, fN_all, Ae, OneoverMc, dx, freq, idxS5, nodeid_4_grnd, nodeid_4_injectcurr);
         tini = tic;
         disp(['Iterative solution started ... '])
@@ -294,7 +305,7 @@ for freq_no=1:num_freq
         
         % remove the following later on! not needed!
         % compute column w/ alternative way - just for double checking
-        [currs_port_yparams2] = lse_compute_Y_mat_column_alternative(num_ports,Ae,Ae_only_leaving,Ae_only_entering_bndry,x,nodeid_lft,currs_port_yparams);
+        %[currs_port_yparams2] = lse_compute_Y_mat_column_alternative(num_ports,Ae,Ae_only_leaving,Ae_only_entering_bndry,x,nodeid_lft,currs_port_yparams);
   
         
         disp(['Done... Solving for port # ',num2str(port_no)])

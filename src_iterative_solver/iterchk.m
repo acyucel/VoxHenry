@@ -15,11 +15,12 @@ function [atype,afun,afcnstr] = iterchk(A)
 
 % if running under Octave, use the fcnchk_octave() alternative version
 if(exist ('OCTAVE_VERSION', 'builtin') > 0)
-   [afun,afunmsg] = fcnchk_octave(A);  
+   [afun,afunmsg] = fcnchk_octave(A); 
 else
    [afun,afunmsg] = fcnchk(A);
 end
 
+% 'afunmsg' contains any error message from fcnchk
 if isempty(afunmsg)
    if isa(afun,'inline')      
       if isa(A,'inline')
