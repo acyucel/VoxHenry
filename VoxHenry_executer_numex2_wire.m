@@ -29,12 +29,15 @@ fl_check_ports=0; % set to 1 for only plotting the port nodes (no simulation)
 plot_option=1; % see the options of plotting in Visualization part
 freq_curr_plot=2.5e9; % frequency for plotting currents
 simple_post_proc = 1; % if 1, just plot the current densities in 3D
+prectol = 1e-1; % tolerance used in Schur GMRES inversion by 'schur_gmres' preconditioner
 
 % use or do not use preconditioner
 % valid values are: 'no_precond', 'schur_invert', 'schur_approx'
 %fl_precon_type = 'no_precond';
 %fl_precon_type = 'schur_approx';
 fl_precon_type = 'schur_invert';
+%fl_precon_type = 'schur_gmres';
+%fl_precon_type = 'schur_invert_original';
 
 % -------------------------------------------------------------------------
 %                  Inputs for the Structure
@@ -203,8 +206,8 @@ end
 Ae(nodeid_4_grnd,:)=0;
 Ae(nodeid_4_injectcurr,:)=0;
 
-        
-if (strcmp(fl_precon_type, 'schur_approx') == 1)
+% only the original code needs 'Ae' with rows of zeros corresponding to the ports
+if (strcmp(fl_precon_type, 'schur_invert_original') == 0)
     % length of rhs_vect is reduced of ('Ae' rows - 'Ar' rows) elements, where Ar is Ae without the rows 
     % corresponding to the ground or excitation nodes (anyway after the first size(Ae,2) elements
     % corresponding to the input port voltages, the 'rhs_vect' is all zeros)
@@ -255,7 +258,12 @@ for freq_no=1:num_freq
     st_sparse_precon = st_sparse_precon2 * (ko^2);
 
     sim_CPU_lse(freq_no,1,1)=toc(tinisim); % CPU time for FFT + prep data
-    
+ 
+    % prepare the preconditioner
+    tinisim = tic;
+    lse_sparse_precon_prepare(dx,freq,OneoverMc,idxS,st_sparse_precon,nodeid_4_grnd,nodeid_4_injectcurr,Ae);
+    sim_CPU_lse(freq_no,port_no,2)=toc(tinisim); % CPU time for sparse_precon
+        
     for port_no=1:num_ports
         disp(['Solving for port # ',num2str(port_no), ' ...'])
 
@@ -270,21 +278,23 @@ for freq_no=1:num_freq
         %     Solve Linear System of Equations Iteratively
         % -------------------------------------------------------------------------
         
-        if (port_no == 1)
-            % prepare the preconditioner
-            tinisim = tic;
-            lse_sparse_precon_prepare(dx,freq,OneoverMc,idxS3,st_sparse_precon,nodeid_4_grnd,nodeid_4_injectcurr,Ae);
-            sim_CPU_lse(freq_no,port_no,2)=toc(tinisim); % CPU time for sparse_precon
-        end
         tinisim = tic;
         % Solve the system iteratively
-        % Define the handle for matvect (remark: all other parameters beyond J
+        % Define the handle for matvect (remark: all other parameters beyond 'J'
         % are assigned at *this* time and are not modified any more later on when the function is called)
         fACPU   = @(J)lse_matvect_mult(J, fN_all, Ae, OneoverMc, dx, freq, idxS5, nodeid_4_grnd, nodeid_4_injectcurr);
+        % Define the handle for the preconditioner multiplication (remark: all other parameters beyond 'JOut_full_in'
+        % are assigned at *this* time and not modified any more later on when the function is called)
+        fPCPU = @(JOut_full_in)lse_sparse_precon_multiply(JOut_full_in, Ae, nodeid_4_grnd, nodeid_4_injectcurr, prectol);
         tini = tic;
         disp(['Iterative solution started ... '])
-        [rhs_vect_sparse_precon]=lse_sparse_precon_multiply(rhs_vect(:,port_no),Ae,nodeid_4_grnd,nodeid_4_injectcurr);
-        [x, flag, relres, iter, resvec] = pgmres(@(J)fACPU(J), rhs_vect_sparse_precon, inner_it, tol, outer_it);
+        %[rhs_vect_sparse_precon]=lse_sparse_precon_multiply(rhs_vect(:,port_no),Ae,nodeid_4_grnd,nodeid_4_injectcurr);
+        if (strcmp(fl_precon_type, 'schur_gmres') == 0)
+            [x, flag, relres, iter, resvec] = pgmres(@(J)fACPU(J), rhs_vect(:,port_no), inner_it, tol, outer_it, @(JOut_full_in)fPCPU(JOut_full_in) );
+        else
+            [x, flag, relres, iter, resvec] = fpgmres(@(J)fACPU(J), rhs_vect(:,port_no), inner_it, tol, outer_it, @(JOut_full_in)fPCPU(JOut_full_in) );
+        end
+
         tend = toc(tini);
         disp(['Total time for iterative solution ::: ' ,num2str(tend)]);
         disp(['Done... Iterative solution'])

@@ -1,5 +1,5 @@
-function lse_sparse_precon_prepare(dx,freq,OneoverMc,idxS3,st_sparse_precon,nodeid_4_grnd,nodeid_4_injectcurr,Ae)
-global A_inv LL UU PP QQ RR Sch_sparse slct_decomp_sch fl_cholmod A_noninv W
+function lse_sparse_precon_prepare(dx,freq,OneoverMc,idxS,st_sparse_precon,nodeid_4_grnd,nodeid_4_injectcurr,Ae)
+global A_inv LL UU PP QQ RR Sch_sparse slct_decomp_sch fl_cholmod A_noninv W fPSchur precond
 global fl_precon_type
 
 if (strcmp(fl_precon_type, 'no_precond') == 1)
@@ -38,7 +38,7 @@ eo = 1/co^2/mu;
 tic
 % take one value only of 'OneoverMc' (from the first non-empty voxel)
 % Note that taking OneoverMc this way assumes that all conductors have the same conductivity
-OneoverMc_dum=OneoverMc(idxS3(1));
+OneoverMc_dum=OneoverMc(idxS(1));
 diag_pulse=1/((1/(j*omega*eo))*((1/dx*OneoverMc_dum)-st_sparse_precon(1)));
 diag_2Dlinear=1/((1/(j*omega*eo))*((dx/6*OneoverMc_dum*(1/(dx^2)))-st_sparse_precon(2)));
 diag_3Dlinear=1/((1/(j*omega*eo))*((dx/2*OneoverMc_dum*(1/(dx^2)))-st_sparse_precon(3)));
@@ -67,7 +67,177 @@ if (strcmp(fl_precon_type, 'schur_approx') == 1)
     % and place them on the diagonal of a sparse matrix, 'W'
     W = spdiags(1./w,0,size(w,1),size(w,1));
 
+elseif (strcmp(fl_precon_type, 'schur_gmres') == 1)
+    
+    Sch_comp=Ae*A_inv*Ae';
+    precond = spdiags(diag(Sch_comp),0,size(Sch_comp,1),size(Sch_comp,1));
+
+    fPSchur = @(schur_in)lse_sparse_schur_compl_multiply(schur_in, Ae, A_inv);
+
 elseif (strcmp(fl_precon_type, 'schur_invert') == 1)
+  
+    % 2) Obtain Schur complement
+    tic
+    
+    % as the rows of Ae corresponding to ground or excitation nodes have been removed,
+    % obtaining what in the VoxHenry paper is called 'Ar', we can proceed with the standard
+    % Schur complement from the system (but in the code 'Ar' is actually 'Ae' without the zeroed rows)
+    % [A  B] = [Z -Ar']
+    % [C  D]   [Ar  0 ]
+
+    % symm. voltage source and current source will use this
+    Sch_comp=Ae*A_inv*Ae';
+
+    if (fl_profile == 1); disp(['Time to obtain Schur complement ::: ',num2str(toc)]); end
+
+    % 3) Factorization of Schur complement with different schemes
+
+    %ishermitian(Sch_comp)
+    if (issymmetric(Sch_comp) == 0)
+         if (strcmp(slct_decomp_sch, 'ldlt_decomp') == 1)
+             disp('Schur complement matrix is not symmetric')
+             disp('Decomposition is changed to LU')
+             slct_decomp_sch = 'lu_decomp';
+         elseif (strcmp(slct_decomp_sch, 'chol_decomp') == 1 )
+             disp('Schur complement matrix is not symmetric')
+             disp('Decomposition is changed to LU')
+             slct_decomp_sch = 'lu_decomp';
+         end
+    end
+
+    switch slct_decomp_sch
+        
+        case 'lu_decomp'
+            
+            tic
+            [LL,UU,PP,QQ,RR] = lu(Sch_comp);
+            disp(['Time to (LU) factorize Schur complement ::: ',num2str(toc)])
+            
+            infomem1 = whos('LL');infomem2 = whos('UU'); infomem3 = whos('PP');
+            infomem4 = whos('QQ');infomem5 = whos('RR');
+            memestimated = (infomem1.bytes+infomem2.bytes+infomem3.bytes+infomem4.bytes+infomem5.bytes)/(1024*1024);
+            disp(['Memory for LU fact. matrices (MB)::' , num2str(memestimated)]);
+            % Test for CPU time of inversion
+            bb=randn(size(Sch_comp,1),1)+sqrt(-1)*randn(size(Sch_comp,1),1);
+            tic
+            x_dum_lu = QQ * (UU \ (LL \ (PP * (RR \ bb))));
+            disp(['Time for one inversion with LU ::: ',num2str(toc)])
+            tic
+            
+            if (fl_accu_check == 1)
+                tic
+                x_dum_back = Sch_comp\bb;
+                disp(['Time for one inversion with backslash ::: ',num2str(toc)])
+                csd=num2str(max(abs(x_dum_lu-x_dum_back)./abs(x_dum_back)));
+                disp(['Max rel diff between solutions obtained via decomposition and direct baskslash ::: ',csd])
+            end
+            
+            
+        case 'ldlt_decomp'
+            
+            if (fl_cholmod == 1)
+                % factorization and inversion with CHOLMOD in Suitesparse
+                tic;
+                [LL,p,QQ] = ldlchol (Sch_comp);
+                disp(['Time to (LDLT) factorize Schur complement - Cholmod ::: ',num2str(toc)])
+                
+                infomem1 = whos('LL');infomem2 = whos('p');infomem3 = whos('QQ');
+                memestimated = (infomem1.bytes+infomem2.bytes+infomem3.bytes)/(1024*1024);
+                disp(['Memory for LDLT fact. matrices - Cholmod (MB)::' , num2str(memestimated)]);
+                
+                if (fl_accu_check == 1)
+                    tic
+                    x_dum_back = Sch_comp\bb;
+                    disp(['Time for one inversion with backslash ::: ',num2str(toc)])
+                    csd=num2str(max(abs(x_dum_ldlt-x_dum_back)./abs(x_dum_back)));
+                    disp(['Max rel diff between solutions obtained via decomposition and direct baskslash ::: ',csd])
+                end
+                
+            else
+                
+                tic
+                [LL,QQ,PP,RR] = ldl(Sch_comp);% option 2 PP'*RR*A*RR*PP = LL*QQ*LL'
+                disp(['Time to (LDLT) factorize Schur complement ::: ',num2str(toc)])
+                
+                infomem1 = whos('LL');infomem2 = whos('QQ');infomem3 = whos('PP'); infomem4 = whos('RR');
+                memestimated = (infomem1.bytes+infomem2.bytes+infomem3.bytes+infomem4.bytes)/(1024*1024);
+                disp(['Memory for LDLT fact. matrices (MB)::' , num2str(memestimated)]);
+                % Test for CPU time of inversion
+                bb=randn(size(Sch_comp,1),1)+sqrt(-1)*randn(size(Sch_comp,1),1);
+                tic
+                x_dum_ldlt = RR * PP * (LL' \ (QQ \ (LL \ (PP' * RR * bb)))); % for option 2
+                disp(['Time for one inversion with LDLT ::: ',num2str(toc)])
+                
+                if (fl_accu_check == 1)
+                    tic
+                    x_dum_back = Sch_comp\bb;
+                    disp(['Time for one inversion with backslash ::: ',num2str(toc)])
+                    csd=num2str(max(abs(x_dum_ldlt-x_dum_back)./abs(x_dum_back)));
+                    disp(['Max rel diff between solutions obtained via decomposition and direct baskslash ::: ',csd])
+                end
+            end
+
+
+        case 'chol_decomp'
+            
+            tic
+            [LL,g,PP] = chol(Sch_comp,'lower'); % option 3: LL'=S'AS
+            if (g ~= 0)
+                error ('MATLAB:posdef', 'Matrix must be positive definite.') ;
+            end
+            disp(['Time to (Cholesky) factorize Schur complement ::: ',num2str(toc)])
+                    
+            infomem1 = whos('LL');infomem2 = whos('PP');
+            memestimated = (infomem1.bytes+infomem2.bytes)/(1024*1024);
+            disp(['Memory for Chol. fact. matrices (MB)::' , num2str(memestimated)]);
+            % Test for CPU time of inversion
+            %bb=randn(size(Sch_comp,1),1)+sqrt(-1)*randn(size(Sch_comp,1),1);
+            %tic
+            %x_dum_chol = PP * (LL' \ (LL \ (PP' * bb))); % for option 3
+            %disp(['Time for one inversion with Chol ::: ',num2str(toc)])
+            
+            if (fl_accu_check == 1)
+                tic
+                x_dum_back = Sch_comp\bb;
+                disp(['Time for one inversion with backslash ::: ',num2str(toc)])
+                csd=num2str(max(abs(x_dum_chol-x_dum_back)./abs(x_dum_back)));
+                disp(['Max rel diff between solutions obtained via decomposition and direct baskslash ::: ',csd])
+            end
+            
+            % For large scae test, the vector permutation implementation below
+            % didn't reduce the time. However, I include this here for future
+            % reference
+
+            % % Cholesky with vector permutation
+            % tic
+            % [LL,g,s] = chol(Sch_comp,'lower','vector');
+            % disp(['Time to (Cholesky) factorize Schur complement - vector ::: ',num2str(toc)])
+            % 
+            % x_dum_chol3=zeros(size(x_dum_chol,1),size(x_dum_chol,2));
+            % 
+            % tic
+            % x_dum_chol3(s) = (LL' \ (LL \ (bb(s)))); % for option 3
+            % disp(['Time for one inversion with Chol - vector ::: ',num2str(toc)])
+            % tic
+            % 
+            % rel_diff2=max(abs(x_dum_chol -x_dum_chol3)./abs(x_dum_chol))
+            
+            
+        case 'no_decomp'
+            
+            infomem1 = whos('Sch_comp');
+            memestimated = (infomem1.bytes)/(1024*1024);
+            disp(['Memory for Schur complement matrix (MB)::' , num2str(memestimated)]);
+            
+            Sch_sparse = Sch_comp;
+            
+        otherwise
+            
+            error('Invalid decomposition selection for Schur complement')
+            
+    end
+    
+elseif (strcmp(fl_precon_type, 'schur_invert_original') == 1)
   
     % 2) Obtain Schur complement
     tic

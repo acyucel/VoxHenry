@@ -136,11 +136,11 @@ JOut_full(1:num_curr) = JOut_full(1:num_curr) - (Ae'*JIn0(num_curr+1:num_curr+nu
 
 JOut_full(num_curr+1:num_curr+num_node) = Ae*JIn0(1:num_curr);
 
-% this is not needed in case of Schur approximation method, because in this
-% case we have already removed the empty rows of Ae, so there is no need
+% this is needed only in case of the original code Schur inversion method, because in this
+% case instead of removing the empty rows of Ae, they have been zeroed, so there is the need
 % to add dummy equations to the system (see comments in 'lse_sparse_precond_prepare.m'
-% relevant to 'DD' matrix
-if ( (strcmp(fl_precon_type, 'schur_approx') == 0) & (strcmp(fl_precon_type, 'test_no_precond') == 0) )
+% relevant to 'DD' matrix)
+if ( strcmp(fl_precon_type, 'schur_invert_original') == 1 )
     % For "well-conditioning"
     JOut_full(num_curr+nodeid_4_grnd) = JIn0(num_curr+nodeid_4_grnd);
 
@@ -154,11 +154,11 @@ if(fl_profile == 1); disp(['Time for matvect - Ae matrices part::: ',num2str(toc
 % ---------------------------------------------------------------------
 % Sparse preconditioner [E F; G H]
 % ---------------------------------------------------------------------
-tic
-if ( (strcmp(fl_precon_type, 'no_precond') == 0) & (strcmp(fl_precon_type, 'test_no_precond') == 0) )
-    [JOut_full]=lse_sparse_precon_multiply(JOut_full,Ae,nodeid_4_grnd,nodeid_4_injectcurr);
-end
-if(fl_profile == 1); disp(['Time for matvect - sparse preconditioner part::: ',num2str(toc)]); end
+%tic
+%if ( (strcmp(fl_precon_type, 'no_precond') == 0) & (strcmp(fl_precon_type, 'test_no_precond') == 0) )
+%    [JOut_full]=lse_sparse_precon_multiply(JOut_full,Ae,nodeid_4_grnd,nodeid_4_injectcurr);
+%end
+%if(fl_profile == 1); disp(['Time for matvect - sparse preconditioner part::: ',num2str(toc)]); end
 
 % JOut_full_in = JOut_full;
 % % block E contribution

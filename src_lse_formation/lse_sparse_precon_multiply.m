@@ -1,8 +1,11 @@
+function [JOut_full_out]=lse_sparse_precon_multiply(JOut_full_in,Ae,nodeid_4_grnd,nodeid_4_injectcurr,prectol)
 
-function [JOut_full_out]=lse_sparse_precon_multiply(JOut_full_in,Ae,nodeid_4_grnd,nodeid_4_injectcurr)
-
-global A_inv LL UU PP QQ RR Sch_sparse slct_decomp_sch fl_cholmod A_noninv W
+global A_inv LL UU PP QQ RR Sch_sparse slct_decomp_sch fl_cholmod A_noninv W fPSchur precond
 global fl_precon_type
+
+fl_profile = 0;
+
+tic
 
 if (strcmp(fl_precon_type, 'no_precond') == 1)
     JOut_full_out = JOut_full_in;
@@ -20,7 +23,29 @@ num_node=size(Ae,1);
 num_curr=size(Ae,2);
 JOut_full_out=zeros(num_node+num_curr,1);
 
-if (strcmp(fl_precon_type, 'schur_approx') == 1)
+if (strcmp(fl_precon_type, 'schur_gmres') == 1)
+    
+    % must calculate:
+    % d = S^-1*(b - Ar*Y^-1*a)
+    % c = Y^-1*(a + Ar'*d)
+    % Here multiplication by S^-1 is done via GMRES
+                
+    num_node=size(Ae,1);
+    num_curr=size(Ae,2);
+    x_vect = zeros(num_curr+num_node,1);
+
+    % must calculate:
+    % d = S^-1*(b - Ar*Y^-1*a)
+    % c = Y^-1*(a + Ar'*d)
+    
+    JOut_full_out(num_curr+1:num_curr+num_node) = (JOut_full_in(num_curr+1:num_curr+num_node) - ( Ae * A_inv * JOut_full_in(1:num_curr) ) );
+    
+    [JOut_full_out(num_curr+1:num_curr+num_node),flag,relres,iter,resvec] = gmres(@(schur_in)fPSchur(schur_in), JOut_full_out(num_curr+1:num_curr+num_node), min(100,num_curr-1), prectol, 10, precond);
+    disp(['Internal iter ', num2str(iter)]);
+    
+    JOut_full_out(1:num_curr) = (JOut_full_in(1:num_curr) + (Ae' * JOut_full_out(num_curr+1:num_curr+num_node))) .* diag(A_inv);  
+
+elseif (strcmp(fl_precon_type, 'schur_approx') == 1)
     
     % must calculate:
     % d = S^-1*(b - Ar*Y^-1*a)
@@ -34,6 +59,65 @@ if (strcmp(fl_precon_type, 'schur_approx') == 1)
 
     
 elseif (strcmp(fl_precon_type, 'schur_invert') == 1)
+    
+    if (fl_volt_source == 1) % voltage source
+        disp('Change preconditioner type !!! ')
+        error('These decompositions can not work with fl_volt_source=1 !!!')
+    end
+    
+    switch slct_decomp_sch
+        
+        case 'lu_decomp'
+            
+            JOut_full_out(num_curr+1:num_curr+num_node) = ...
+                QQ * (UU \ (LL \ (PP * (RR \ (JOut_full_in(num_curr+1:num_curr+num_node) - ( Ae * A_inv * JOut_full_in(1:num_curr) ) )))));
+            
+            JOut_full_out(1:num_curr) = (JOut_full_in(1:num_curr) - ((-Ae')*JOut_full_out(num_curr+1:num_curr+num_node))) .* diag(A_inv);
+                       
+        case 'ldlt_decomp'
+                    
+            if (fl_cholmod == 1)
+
+                %JOut_full_out(num_curr+1:num_curr+num_node) = ...
+                %    (RR * PP * (LL' \ (QQ \ (LL \ (PP' * RR * (JOut_full_in(num_curr+1:num_curr+num_node) - ( Ae * A_inv * JOut_full_in(1:num_curr) ) ))))));
+                
+                bb_dum = JOut_full_in(num_curr+1:num_curr+num_node) - (Ae * A_inv * JOut_full_in(1:num_curr));
+                
+                JOut_full_out(num_curr+QQ) = ldlsolve (LL,bb_dum(QQ));
+                
+                JOut_full_out(1:num_curr) = (JOut_full_in(1:num_curr) - ((-Ae')*JOut_full_out(num_curr+1:num_curr+num_node))) .* diag(A_inv);
+                
+                
+            else
+                
+                JOut_full_out(num_curr+1:num_curr+num_node) = ...
+                    (RR * PP * (LL' \ (QQ \ (LL \ (PP' * RR * (JOut_full_in(num_curr+1:num_curr+num_node) - ( Ae * A_inv * JOut_full_in(1:num_curr) ) ))))));
+                
+                JOut_full_out(1:num_curr) = (JOut_full_in(1:num_curr) - ((-Ae')*JOut_full_out(num_curr+1:num_curr+num_node))) .* diag(A_inv);
+            end
+
+        case 'chol_decomp'
+                    
+            JOut_full_out(num_curr+1:num_curr+num_node) = ...
+                (PP * (LL' \ (LL \ (PP' * (JOut_full_in(num_curr+1:num_curr+num_node) - ( Ae * A_inv * JOut_full_in(1:num_curr) ) )))));
+            
+            JOut_full_out(1:num_curr) = (JOut_full_in(1:num_curr) - ((-Ae')*JOut_full_out(num_curr+1:num_curr+num_node))) .* diag(A_inv);          
+            
+        case 'no_decomp'
+                    
+            JOut_full_out(num_curr+1:num_curr+num_node) = ...
+                (Sch_sparse \ (JOut_full_in(num_curr+1:num_curr+num_node) - ( Ae * A_inv * JOut_full_in(1:num_curr) )));
+            
+            JOut_full_out(1:num_curr) = (JOut_full_in(1:num_curr) - ((-Ae')*JOut_full_out(num_curr+1:num_curr+num_node))) .* diag(A_inv);
+            
+        otherwise
+            
+            error('Invalid decomposition selection for Schur complement')
+            
+    end
+    
+elseif (strcmp(fl_precon_type, 'schur_invert_original') == 1)
+    
     switch slct_decomp_sch
         
         case 'lu_decomp'
@@ -279,6 +363,8 @@ elseif (strcmp(fl_precon_type, 'schur_invert') == 1)
             
     end
 end
+
+if(fl_profile == 1); disp(['Time for matvect - sparse preconditioner part::: ',num2str(toc)]); end
 
 % moving the printing of dots to the 'lse_matvect_mult.m' function
 %fprintf ('.') ;
