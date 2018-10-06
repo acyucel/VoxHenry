@@ -49,8 +49,8 @@ fl_precon_type = 'schur_invert';
 num_ports = 1; % number of ports
 len_cond=50.0e-6; % length of conductors
 dia_cond=10.0e-6; % diameter of conductor
-%len_cond=2.0e-6; % length of conductors
-%dia_cond=4.0e-6; % diameter of conductor
+len_cond=2.0e-6; % length of conductors
+dia_cond=4.0e-6; % diameter of conductor
 rad_cond=dia_cond/2; % radius of conductor
 cen_cond1=[len_cond/2 dia_cond/2 dia_cond/2];
 Cnt = [cen_cond1;]; % centers of conductors
@@ -365,7 +365,7 @@ if(simple_post_proc == 1)
     disp('-----------------------------------------------------')
     disp(['Plotting Current Distribution...'])
 
-    close all
+    %close all
 
     % select plotting option - check the subroutines below for more options
     % option 1-> total currents on 3D structure, - no cut selection required
