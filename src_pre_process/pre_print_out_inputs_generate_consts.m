@@ -1,25 +1,14 @@
-%function print_out_inputs_generate_consts
-if (num_freq > 1)
-    if (issorted(freq) == 0) % not sorted
-        freq=sort(freq)
-    end
-    freq_all = freq;
-    freq = freq(1); % currently do everything for the lowest freq
-elseif (num_freq == 1)
-    freq_all = freq;
-end
-% generate EM constants
-EMconstants;
-disp('------------------------------------------------------------------')
-disp('VoxHenry: Inductance Extraction Simulator for Voxelized Geometries')
-disp('                                                                  ')
-disp('          by Abdulkadir C. Yucel and Jacob K. White (MIT)         ')
-disp('                                                                  ')
-disp('                 Empowered by modules/ideas from                  ')
-disp('   Athanasios G. Polimeridis and Ioannis P. Georgakis (Skoltech)  ')
-disp('     Hakan Bagci (KAUST), Enrico Di Lorenzo (FastFieldSolvers)    ')
-disp('------------------------------------------------------------------')
 disp('Inputs for simulation :::')
+% take as reference 'se' the maximum conductivity of any conductor
+se = max(max(max(sigma_e)));
+% 'er' is instead zero
+er = 0;
+
+disp(['Domain dimension: ', num2str(L), ' x ', num2str(M), ' x ', num2str(N), ' = ', num2str(L*M*N), ' voxels']);
+disp(['Number of non-empty voxels: ', num2str(size(idxS,1))]);
+disp(['Voxel Size = ', num2str(dx)])
+disp(['Number of Ports = ', num2str(num_ports)])
+
 if(num_freq == 1)
     disp(['Frequency = ',num2str(freq)]);
     disp(['Conductivity of conductors = ',num2str(se)]);
@@ -28,7 +17,7 @@ if(num_freq == 1)
     skin_depth=1/sqrt(pi*freq*4*pi*1e-7*se);
     disp(['Discretization should be at order of (skin depth) ', num2str(skin_depth)])
 else
-    disp(['Frequencies = ']);
+    fprintf('Frequencies = ');
     for kk=1:num_freq
         fprintf('%10.5e ', freq_all(kk))
     end
@@ -44,26 +33,8 @@ else
     disp(['Skin depth at max freq = ', num2str(skin_depth)])
 end
 
-disp(['Voxel Size = ', num2str(Res)])
-disp(['Number of Ports = ', num2str(num_ports)])
 disp(['Tolerance for iterative solver = ', num2str(tol)])
 disp(['# of maximum inner / outer GMRES iterations = ', num2str(inner_it),' / ',num2str(outer_it)])
-
-if (fl_check_ports == 1 || fl_check_geo == 1 || fl_check_ports == 1)
-    disp('***************** No Simulation will be performed *****************')
-    disp('Just for checking the geometry, computational domain, or port nodes')
-    disp('Turn of fl_check_ports, fl_check_geo, fl_check_ports flags for simulation')
-end
-
-if (fl_check_geo == 1)
-    disp('Offline mode: The geometry will be plotted ')
-end
-if (fl_check_domain == 1)
-    disp('Offline mode: The computational domain will be plotted ')
-end
-if (fl_check_ports == 1)
-    disp('Offline mode: The port nodes will be plotted ')
-end
 
 % store CPU times for the simulations
 sim_CPU_pre=zeros(1,2);
@@ -90,6 +61,6 @@ else % otherwise search in frequency list
     end
 end
 
-if (plot_option >= 1 && plot_option <= 1 )
+if (plot_option == 1)
     disp(['Currents will be plotted at the frequency ', num2str(freq_curr_plot)])
 end

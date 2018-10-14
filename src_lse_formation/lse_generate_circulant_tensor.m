@@ -51,11 +51,12 @@ d = [dx,dy,dz];
 % 2b) Compute interaction between far distance cells - the volume-volume integrals
 G_mn = zeros(L,M,N,10);
 infofN = whos('G_mn'); memestimated = 2*infofN.bytes/(1024*1024);
-disp(['Memory for temporarily storing G_mn (MB) ::: ' , num2str(memestimated)]);
+disp(['  Memory for temporarily storing G_mn (MB) ::: ' , num2str(memestimated)]);
 
 Np = Np_1D_far_V;
 % 6D Clenshaw - Curtis weights and points
 [W6D,X,Y,Z,Xp,Yp,Zp] = weights_points(Np,6);
+disp(['  Start computing far interactions'])
 tic
 parfor mx = 1:L
     for my = 1:M
@@ -71,7 +72,7 @@ parfor mx = 1:L
         end
     end
 end
-disp(['Time for computing far interactions ::: ',num2str(toc)])
+disp(['  Time for computing far interactions ::: ',num2str(toc)])
 
 % 2d) Compute interaction between medium distance cells - the surface-surface integrals
 
@@ -103,7 +104,7 @@ if(lse_exploit_symmetry == 0 || n_mediumL ~= n_mediumM || n_mediumL ~= n_mediumN
             end
         end
     end
-    disp(['Time for computing medium interactions ::: ',num2str(toc)])
+    disp(['  Time for computing medium interactions ::: ',num2str(toc)])
 else
     % compute medium interactions exploiting symmetry
     % remark: volume must be cubic, i.e. 'mediumL' = 'mediumM' = 'mediumN'
@@ -276,7 +277,7 @@ else
         G_mn(mz,my,mx,10) = G_mn(mz,my,mx,10) + 4*K_tmp(dum,3);
         
     end
-    disp(['Time for computing medium interactions exploiting symmetry ::: ',num2str(toc)])
+    disp(['  Time for computing medium interactions exploiting symmetry ::: ',num2str(toc)])
     % line commented out to use G_mn directly; even if in Matlab/Octave you might save
     % some time to use an intermediate 'G_mn_test' smaller tensor and copy it to 'G_mn' at the end
     %G_mn(1:n_mediumL,1:n_mediumL,1:n_mediumL,:) = G_mn_test(1:n_mediumL,1:n_mediumL,1:n_mediumL,:);
@@ -473,7 +474,7 @@ if (lse_enhanced_near == 3 && Ls == Ms && Ls == Ns)
         
     end
     
-    disp(['Time for computing near interactions exploiting symmetry ::: ',num2str(toc)])
+    disp(['  Time for computing near interactions ::: ',num2str(toc)])
     
 elseif (lse_enhanced_near == 2 && Ls == Ms && Ls == Ns)
   
@@ -628,7 +629,7 @@ elseif (lse_enhanced_near == 2 && Ls == Ms && Ls == Ns)
         
     end
     
-    disp(['Time for computing near interactions exploiting symmetry ::: ',num2str(toc)])
+    disp(['  Time for computing near interactions exploiting symmetry ::: ',num2str(toc)])
     
 elseif (lse_enhanced_near == 1)
     % Parallelization requires the maximum number of threads working in
@@ -698,7 +699,7 @@ elseif (lse_enhanced_near == 1)
                 G_mn(mx,my,mz,:) = G_mn_tmp(dum,:);
     end
     
-    disp(['Time for computing near interactions using parallelization ::: ',num2str(toc)])
+    disp(['  Time for computing near interactions using parallelization ::: ',num2str(toc)])
 
 % old code, loosely parallelized    
 else
@@ -734,7 +735,7 @@ else
         end
     end
     
-    disp(['Time for computing near interactions ::: ',num2str(toc)])
+    disp(['  Time for computing near interactions the old way ::: ',num2str(toc)])
 end
 
 
@@ -756,7 +757,7 @@ st_sparse_precon=[squeeze(G_mn(1,1,1,1)) squeeze(G_mn(1,1,1,6)) squeeze(G_mn(1,1
 tic
 Gp_mn = zeros(2*L,2*M,2*N ,10);
 infofN = whos('Gp_mn'); memestimated = 2*infofN.bytes/(1024*1024); % times 2 for real2cmplx
-disp(['Memory for storing circulant tensor (MB) ::: ' , num2str(memestimated)]);
+disp(['  Memory for storing circulant tensor (MB) ::: ' , num2str(memestimated)]);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Cube 'L'
 [Gp_coeff_L] = gperiodic_coeff_nop_linJVIE('L');
@@ -794,7 +795,7 @@ for ii = 1:10
     % Cube 'LMN'
     Gp_mn(L+2:2*L,M+2:2*M,N+2:2*N,ii) = G_mn(L:-1:2,M:-1:2,N:-1:2,ii) * Gp_coeff_LMN(ii,1);
 end
-disp(['Time for computing circulant tensor ::: ',num2str(toc)])
+disp(['  Time for computing circulant tensor ::: ',num2str(toc)])
 % Remove unnecessary memory consuming elements
 clear G_mn
 
@@ -802,12 +803,12 @@ clear G_mn
 if (fl_no_fft == 1)
     fN_all = Gp_mn;
     infofN = whos('fN_all'); memestimated = 2*infofN.bytes/(1024*1024);
-    disp(['Two circulant tensors will be held in memory for fast sweep!']);
-    disp(['Memory for storing two circulant tensors (MB) ::: ' , num2str(memestimated)]);
+    disp(['  Two circulant tensors will be held in memory for fast sweep!']);
+    disp(['  Memory for storing two circulant tensors (MB) ::: ' , num2str(memestimated)]);
 else
     tic
     fN_all = fft_operator(Gp_mn);
-    disp(['Time for FFT of circulant tensor ::: ',num2str(toc)])
+    disp(['  Time for FFT of circulant tensor ::: ',num2str(toc)])
 end
 
   

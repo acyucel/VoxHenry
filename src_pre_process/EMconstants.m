@@ -13,8 +13,11 @@
 mu = 4*pi*1e-7;
 co = 299792458;
 eo = 1/co^2/mu;
+% Free-space impedance
+eta =  3.767303134617706e+002; 
+
+% frequency-dependent part
 omega = 2*pi*freq;
 lambda = co/freq;
 ko = 2*pi/lambda;
 omega_mu = omega*mu;
-eta =  3.767303134617706e+002; % Free-space impedance

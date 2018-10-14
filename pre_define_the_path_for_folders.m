@@ -4,6 +4,8 @@ use_recent_DIRECTFN=1;
 % find the current folder
 currentfolder = pwd;
 
+% get system-dependent file separator
+filesep = filesep();
 % get system-dependent path separator
 psep = pathsep();
 
@@ -33,11 +35,6 @@ else
   p12 = genpath([currentfolder, filesep, 'suitesparse_cholmod_linux_compiled']);
 end
 addpath(p12);
-
-% get system-dependent file separator
-filesep = filesep();
-
-currentfolder = pwd;
 
 if(use_recent_DIRECTFN)
   rmpath([currentfolder, filesep, 'src_lin_vie', filesep, 'singular', filesep, 'singular_win_compiled']);

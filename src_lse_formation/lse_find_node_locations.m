@@ -272,6 +272,7 @@ if (fl_vis_panel_locs_ids_z == 1)
     %view(0,0)
     view(-25,45)
 end
+
 if(fl_profile == 1); disp(['Time for visualizing panels and currents ::: ', num2str(toc)]); end
 
 
