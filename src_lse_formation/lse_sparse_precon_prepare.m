@@ -28,6 +28,7 @@ tic_Assembly = tic;
 % constants
 num_node = size(Ae,1);
 num_curr = size(Ae,2);
+num_curr_one5th = num_curr/5;
 
 omega = 2*pi*freq;
 mu = 4*pi*1e-7;
@@ -36,18 +37,26 @@ eo = 1/co^2/mu;
 
 % 1) Compute A_inv matrix
 tic
-% take one value only of 'OneoverMc' (from the first non-empty voxel)
-% Note that taking OneoverMc this way assumes that all conductors have the same conductivity
-OneoverMc_dum=OneoverMc(idxS(1));
-diag_pulse=1/((1/(j*omega*eo))*((1/dx*OneoverMc_dum)-st_sparse_precon(1)));
-diag_2Dlinear=1/((1/(j*omega*eo))*((dx/6*OneoverMc_dum*(1/(dx^2)))-st_sparse_precon(2)));
-diag_3Dlinear=1/((1/(j*omega*eo))*((dx/2*OneoverMc_dum*(1/(dx^2)))-st_sparse_precon(3)));
+% get the actual values of 'OneoverMc'. This allows different conductivites for each voxel.
+OneoverMc_dum=OneoverMc(idxS);
+diag_pulse=1./((1/(j*omega*eo))*((1/dx*OneoverMc_dum)-st_sparse_precon(1)));
+diag_2Dlinear=1./((1/(j*omega*eo))*((dx/6*OneoverMc_dum*(1/(dx^2)))-st_sparse_precon(2)));
+diag_3Dlinear=1./((1/(j*omega*eo))*((dx/2*OneoverMc_dum*(1/(dx^2)))-st_sparse_precon(3)));
 inds=zeros(num_curr,3);
+% rows for sparse 'A_inv' formation
 inds(1:num_curr,1)=[1:1:num_curr];
+% columns for sparse 'A_inv' formation
 inds(1:num_curr,2)=inds(1:num_curr,1);
-inds(1:3*num_curr/5,3)=abs(diag_pulse);
-inds(3*num_curr/5+1:4*num_curr/5,3)=abs(diag_2Dlinear);
-inds(4*num_curr/5+1:num_curr,3)=abs(diag_3Dlinear);
+% values for sparse 'A_inv' formation, split in three sets:
+% first set is from 1 to 3/5 of num_curr, i.e. Ix, Iy, Iz
+inds(1:num_curr_one5th,3)=abs(diag_pulse);
+inds(num_curr_one5th+1:2*num_curr_one5th,3)=abs(diag_pulse);
+inds(2*num_curr_one5th+1:3*num_curr_one5th,3)=abs(diag_pulse);
+% second set is from 3/5 to 4/5 of num_curr, i.e. I2D
+inds(3*num_curr_one5th+1:4*num_curr_one5th,3)=abs(diag_2Dlinear);
+% third set is from 4/5 to 5/5 of num_curr, i.e. I3D
+inds(4*num_curr_one5th+1:num_curr,3)=abs(diag_3Dlinear);
+% now create the sparse 'A_inv'
 A_inv=sparse(inds(:,1),inds(:,2),inds(:,3));
 if (fl_profile == 1); disp(['Time to compute A_inv block ::: ',num2str(toc)]); end
 

@@ -25,8 +25,8 @@ pre_define_the_path_for_folders
 % voxel size (deltax)
 Res = 0.5e-6;
 % inputs for generating conductors with specified lengths and widths of arms
-num_conds = 1; % number of conductors
-num_ports = 1; % number of ports
+num_conds = 2; % number of conductors
+num_ports = 2; % number of ports
 len_cond=30.0e-6; % length of conductors
 width_cond=10.0e-6; % width of conductor
 height_cond=10.0e-6; % height of conductor
@@ -49,6 +49,7 @@ num_freq = length(freq);
 freq_curr_plot=2.5e9; % frequency for plotting currents
 
 er = 0;  % epsilon_r of conductors
+%se=[5.8e7 3.77e7]; % conductivity of conductors
 se=5.8e7; % conductivity of conductors
 fl_check_domain=0; % set to 1 for only plotting the structure (no simulation)
 fl_check_geo=0; % set to 1 for only plotting the domain (no simulation)
