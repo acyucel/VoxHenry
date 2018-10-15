@@ -210,17 +210,9 @@ end
 I_S(1) =  I_SK(1);
 I_S(2) =  I_SK(2);
 I_S(3) = -I_SK(4);
-I_S(4) =  I_SK(3);
-I_S(5) = -I_SK(5);
-I_S(6) =  I_SK(8) + I_SK(9);
-I_S(7) = -2*I_SK(7);
-I_S(8) = -2*I_SK(6);
-I_S(9) =  I_SK(8) - I_SK(9);
-I_S(10)=  I_SK(8) + I_SK(9) + 4*I_SK(10);
-
-
-
-
-
+I_S(4) =  I_SK(8) + I_SK(9);
+I_S(5) = -2*I_SK(6);
+I_S(6) =  I_SK(8) - I_SK(9);
+I_S(7)=  I_SK(8) + I_SK(9) + 4*I_SK(10);
 
 end

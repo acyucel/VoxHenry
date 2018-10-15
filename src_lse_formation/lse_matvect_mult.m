@@ -11,7 +11,10 @@ fl_profile = 0;
 
 tic
 % constants
-mu = 4*pi*1e-7; co = 299792458; eo = 1/co^2/mu; omega = 2*pi*freq;
+mu = 4*pi*1e-7;
+co = 299792458; 
+eo = 1/co^2/mu;
+omega = 2*pi*freq;
 oneoverjomegaeo=1/(j*omega*eo);
 
 num_node=size(Ae,1);
@@ -59,35 +62,34 @@ JOut_full_in = zeros(num_curr+num_node,1);
 % x component of JIn, store contribution on 3 components of Jout
 fJ = fftn(JIn(:,:,:,1),[LfN, MfN, NfN]);
 Jout1 = fN_all(:,:,:,1) .* fJ; % Gxx*Jx
-Jout4 = fN_all(:,:,:,4) .* fJ; % G2dx*Jx
-%Jout5 = fN_all(:,:,:,4) .* fJ; % G3dx*Jx
+Jout4 = -fN_all(:,:,:,2) .* fJ; % G2dx*Jx
 Jout5 = Jout4; % G3dx*Jx
 
 % y component of JIn, add contribution on 3 components of Jout
 fJ = fftn(JIn(:,:,:,2),[LfN, MfN, NfN]);
 Jout2 = fN_all(:,:,:,1) .* fJ; % Gyy*Jy
-Jout4 = Jout4 + fN_all(:,:,:,5) .* fJ; % G2dy*Jy - (-(y-yc))
-Jout5 = Jout5 - fN_all(:,:,:,5) .* fJ; % G3dy*Jy - (y-yc)
+Jout4 = Jout4 - fN_all(:,:,:,3) .* fJ; % G2dy*Jy - (-(y-yc))
+Jout5 = Jout5 + fN_all(:,:,:,3) .* fJ; % G3dy*Jy - (y-yc)
 
 % z component of JIn, store contribution on 2 components of Jout
 fJ = fftn(JIn(:,:,:,3),[LfN, MfN, NfN]);
 Jout3 = fN_all(:,:,:,1) .* fJ; % Gzz*Jz
-Jout5 = Jout5 + fN_all(:,:,:,7) .* fJ; % G3dz*Jz
+Jout5 = Jout5 - fN_all(:,:,:,5) .* fJ; % G3dz*Jz
 
 % 2d component of JIn, add contribution on 4 components of Jout
 fJ = fftn(JIn(:,:,:,4),[LfN, MfN, NfN]);
 Jout1 = Jout1 + fN_all(:,:,:,2) .* fJ; % Gx2d*J2d
 Jout2 = Jout2 + fN_all(:,:,:,3) .* fJ; % Gy2d*J2d - (-(y-yc))
-Jout4 = Jout4 + fN_all(:,:,:,6) .* fJ; % G2d2d*J2d
-Jout5 = Jout5 + fN_all(:,:,:,9) .* fJ; % G3d2d*J2d
+Jout4 = Jout4 + fN_all(:,:,:,4) .* fJ; % G2d2d*J2d
+Jout5 = Jout5 + fN_all(:,:,:,6) .* fJ; % G3d2d*J2d
 
 % 3d component of JIn, add contribution on 3 components of Jout
 fJ = fftn(JIn(:,:,:,5),[LfN, MfN, NfN]);
 Jout1 = Jout1 + fN_all(:,:,:,2) .* fJ; % Gx3d*J3d
 Jout2 = Jout2 - fN_all(:,:,:,3) .* fJ; % Gy3d*J3d - (y-yc)
-Jout3 = Jout3 + fN_all(:,:,:,8) .* fJ; % Gz3d*J3d
-Jout4 = Jout4 + fN_all(:,:,:,9) .* fJ; % G2d3d*J3d
-Jout5 = Jout5 + fN_all(:,:,:,10) .* fJ; % G3d3d*J3d
+Jout3 = Jout3 + fN_all(:,:,:,5) .* fJ; % Gz3d*J3d
+Jout4 = Jout4 + fN_all(:,:,:,6) .* fJ; % G2d3d*J3d
+Jout5 = Jout5 + fN_all(:,:,:,7) .* fJ; % G3d3d*J3d
 
 
 
