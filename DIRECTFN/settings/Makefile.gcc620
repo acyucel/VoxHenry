@@ -1,0 +1,13 @@
+
+CompCXX     = g++-6.2.0 -std=c++11 -mavx
+MOVE        = mv
+SO          = a
+AR          = gcc-ar-6.2.0
+FlagsAR     = -ruv
+FlagsCXX    = -Ofast -flto -fPIC -march=core2 -mtune=core2 --fast-math -D_GCC_5_3_0_  
+FlagsCXX   += -pedantic -Wall -Wold-style-cast -Wextra -Wunused
+FlagsCXX   += -fprefetch-loop-arrays 
+FlagsCXX   += -fopenmp -fopenmp-simd
+LINK_PATH   = #-L$(FFTW_PATH)/lib
+LINK_LIBS   = #-l$(FFTW_OMP_LIB_NAME) -l$(OMP_LIB_NAME)
+

@@ -1,0 +1,79 @@
+include ../settings/Makefile.nmake_win
+INCL_PATH = -I../include
+LOCAL_LIB_NAME = $(DIRECTFN_LIB_NAME).$(SO)
+
+
+
+all: allobj stalib
+
+allobj: directfn_algorithm_ea.($obj) directfn_algorithm_st.($obj) directfn_algorithm_va.($obj) directfn_common.($obj) directfn_contour.($obj) directfn_gl_1d.($obj) directfn_greenfunc.($obj) directfn_interface.($obj) directfn_kernel_arrsum.($obj) directfn_kernel_base.($obj) directfn_kernel_quad_geom.($obj) directfn_kernel_quad_scal.($obj) directfn_kernel_quad_vect.($obj) directfn_kernel_tri.($obj) directfn_quad.($obj) directfn_triag.($obj)
+
+directfn_algorithm_ea.($obj): directfn_algorithm_ea.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_algorithm_ea.cpp
+
+directfn_algorithm_st.($obj): directfn_algorithm_st.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_algorithm_st.cpp
+
+directfn_algorithm_va.($obj): directfn_algorithm_va.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_algorithm_va.cpp
+
+directfn_common.($obj): directfn_common.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_common.cpp
+
+directfn_contour.($obj): directfn_contour.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_contour.cpp
+
+directfn_gl_1d.($obj): directfn_gl_1d.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_gl_1d.cpp
+
+directfn_greenfunc.($obj): directfn_greenfunc.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_greenfunc.cpp
+
+directfn_interface.($obj): directfn_interface.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_interface.cpp
+
+directfn_kernel_arrsum.($obj): directfn_kernel_arrsum.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_kernel_arrsum.cpp
+
+directfn_kernel_base.($obj): directfn_kernel_base.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_kernel_base.cpp
+
+directfn_kernel_quad_geom.($obj): directfn_kernel_quad_geom.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_kernel_quad_geom.cpp
+
+directfn_kernel_quad_scal.($obj): directfn_kernel_quad_scal.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_kernel_quad_scal.cpp
+
+directfn_kernel_quad_vect.($obj): directfn_kernel_quad_vect.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_kernel_quad_vect.cpp
+
+directfn_kernel_tri.($obj): directfn_kernel_tri.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_kernel_tri.cpp
+
+directfn_quad.($obj): directfn_quad.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_quad.cpp
+
+directfn_triag.($obj): directfn_triag.cpp
+	$(CompCXX)  -c $(FlagsCXX) $(INCL_PATH) directfn_triag.cpp
+
+stalib:
+	lib $(FlagsAR) /OUT:../lib/win/$(LOCAL_LIB_NAME) \
+		directfn_algorithm_ea.$(obj) \
+		directfn_algorithm_st.$(obj) \
+		directfn_algorithm_va.$(obj) \
+		directfn_common.$(obj) \
+		directfn_contour.$(obj) \
+		directfn_gl_1d.$(obj) \
+		directfn_greenfunc.$(obj) \
+		directfn_interface.$(obj) \
+		directfn_kernel_arrsum.$(obj) \
+		directfn_kernel_base.$(obj) \
+		directfn_kernel_quad_geom.$(obj) \
+		directfn_kernel_quad_scal.$(obj) \
+		directfn_kernel_quad_vect.$(obj) \
+		directfn_kernel_tri.$(obj) \
+		directfn_quad.$(obj) \
+		directfn_triag.$(obj)
+		
+	cd ../lib/win
+

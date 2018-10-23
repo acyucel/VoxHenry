@@ -1,0 +1,31 @@
+This is BibTeX, Version 0.99dThe top-level auxiliary file: ReadMe_DIRECTFN.aux
+The style file: IEEEtran.bst
+Database file #1: IEEEabrv.bib
+Database file #2: References.bib
+"{" immediately follows a field name---line 181 of file References.bib
+ : @article
+ :         {Johnston2003,
+I'm skipping whatever remains of this entry
+I was expecting a `,' or a `}'---line 558 of file References.bib
+ :     
+ :     pages="2142--2142"}
+(Error may have been on previous line)
+I'm skipping whatever remains of this entry
+Repeated entry---line 836 of file References.bib
+ : @article{Polimeridis2013
+ :                         ,
+I'm skipping whatever remains of this entry
+Repeated entry---line 1088 of file References.bib
+ : @article{Djordjevic2004
+ :                        ,
+I'm skipping whatever remains of this entry
+-- IEEEtran.bst version 1.14 (2015/08/26) by Michael Shell.
+-- http://www.michaelshell.org/tex/ieeetran/bibtex/
+-- See the "IEEEtran_bst_HOWTO.pdf" manual for usage information.
+Warning--empty year in Tambova_EuCap2017
+Name 3 in "A. A. Tambova and M. S. Litsarev and G. D. Guryev, and A. G. Polimeridis" has a comma at the end for entry Tambova2017
+while executing---line 2403 of file IEEEtran.bst
+Warning--empty year in Tambova2017
+
+Done.
+(There were 5 error messages)

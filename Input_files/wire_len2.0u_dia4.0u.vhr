@@ -1,0 +1,75 @@
+* VoxHenry input file
+* Model type: cylindrical wire with radius 4e-006 m and length 2e-006 m
+
+* Frequency points (Hz)
+freq= 1 2.5 5 7.5 10 25 50 75 100 250
+freq= 500 750 1000 2500 5000 7500 10000 25000 50000 75000
+freq= 100000 250000 500000 750000 1e+006 2.5e+006 5e+006 7.5e+006 1e+007 2.5e+007
+freq= 5e+007 7.5e+007 1e+008 2.5e+008 5e+008 7.5e+008 1e+009 2.5e+009 5e+009 7.5e+009
+freq= 1e+010
+
+* Voxel size (m)
+dx=1e-006
+
+* Voxel grid dimension in voxel units; x, y, z
+LMN=2,4,4
+
+* Voxel list
+* Format is:
+* V <index_x> <index_y> <index_z> <conductivity S/m>
+*
+StartVoxelList
+V 1 2 1 5.8e+007
+V 2 2 1 5.8e+007
+V 1 3 1 5.8e+007
+V 2 3 1 5.8e+007
+V 1 1 2 5.8e+007
+V 2 1 2 5.8e+007
+V 1 2 2 5.8e+007
+V 2 2 2 5.8e+007
+V 1 3 2 5.8e+007
+V 2 3 2 5.8e+007
+V 1 4 2 5.8e+007
+V 2 4 2 5.8e+007
+V 1 1 3 5.8e+007
+V 2 1 3 5.8e+007
+V 1 2 3 5.8e+007
+V 2 2 3 5.8e+007
+V 1 3 3 5.8e+007
+V 2 3 3 5.8e+007
+V 1 4 3 5.8e+007
+V 2 4 3 5.8e+007
+V 1 2 4 5.8e+007
+V 2 2 4 5.8e+007
+V 1 3 4 5.8e+007
+V 2 3 4 5.8e+007
+EndVoxelList
+
+* Port nodes list
+* Format is:
+* N <portname> <excitation or ground (P/N)> <voxel_index_x> <voxel_index_y> <voxel_index_z> <node (+z,-z,+x,-x,+y,-y)> 
+*
+N port1 P 2 1 2 +x
+N port1 P 2 1 3 +x
+N port1 P 2 2 1 +x
+N port1 P 2 2 2 +x
+N port1 P 2 2 3 +x
+N port1 P 2 2 4 +x
+N port1 P 2 3 1 +x
+N port1 P 2 3 2 +x
+N port1 P 2 3 3 +x
+N port1 P 2 3 4 +x
+N port1 P 2 4 2 +x
+N port1 P 2 4 3 +x
+N port1 N 1 1 2 -x
+N port1 N 1 1 3 -x
+N port1 N 1 2 1 -x
+N port1 N 1 2 2 -x
+N port1 N 1 2 3 -x
+N port1 N 1 2 4 -x
+N port1 N 1 3 1 -x
+N port1 N 1 3 2 -x
+N port1 N 1 3 3 -x
+N port1 N 1 3 4 -x
+N port1 N 1 4 2 -x
+N port1 N 1 4 3 -x

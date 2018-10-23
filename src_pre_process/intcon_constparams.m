@@ -52,7 +52,12 @@ end
 [L,M,N,~] = size(r);
 
 num_intcon=size(Cnt,1);
-
+% if 's_e' is a scalar, extend it to all the conductors
+% otherwise, 's_e' specifies the conductivity for each conductor
+if size(s_e,2) ~= num_intcon
+    s_e(1:num_intcon) = ones(1,2)*s_e(1);
+end
+  
 % define bounds for each interconnect
 x_bnd=zeros(num_intcon,2);y_bnd=zeros(num_intcon,2);z_bnd=zeros(num_intcon,2);
 for kk=1:num_intcon
@@ -78,6 +83,7 @@ for kk=1:num_intcon
 end
 
 boolean_tens=zeros(L,M,N);
+sigma_e = zeros(L,M,N);
 
 tola=1e-12;
 for ll=1:L
@@ -90,6 +96,8 @@ for ll=1:L
                         r(ll,mm,nn,3) > z_bnd(kk,1)-tola && r(ll,mm,nn,3) < z_bnd(kk,2)+tola)
                     
                     boolean_tens(ll,mm,nn)=1;
+                    
+                    sigma_e(ll,mm,nn) = s_e(kk);
                     
                 end
             end
@@ -106,8 +114,6 @@ idx = find(boolean_tens); % get indices of elements
 epsilon_r = ones(L,M,N);
 epsilon_r(idx) = e_r;
 
-sigma_e = zeros(L,M,N);
-sigma_e(idx) = s_e;
 
 % -------------------------------------------------------------------------
 % Assign the grid of conductors and visualize it 

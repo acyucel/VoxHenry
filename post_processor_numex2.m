@@ -58,7 +58,7 @@ hold on
 h=loglog(freq_all,ind_analytic,'ro'); set(h,'LineWidth',2);
 legend('VoxHenry','Analytical Formula');
 axis tight;grid on;xlabel('Frequency');ylabel('Inductance');
-if(exist ("OCTAVE_VERSION", "builtin") > 0)
+if(exist ('OCTAVE_VERSION', 'builtin') > 0)
     % need to work-around Octave limit/bug with low ylim values
     ylim(gca, 'auto');
 else

@@ -193,7 +193,7 @@ disp(['   '])
 % end
   
 %disp(['Achieved rel. residual NORM(B-A*X)/NORM(B) ::: ', num2str(relres)]);
-disp(['# of total/inner/outter iterations  ::: ', num2str(length(resvec)),' / ',num2str(iter(1)),' / ',num2str(iter(2))]);
+disp(['# of total/inner/outer iterations  ::: ', num2str(length(resvec)),' / ',num2str(iter(1)),' / ',num2str(iter(2))]);
 disp(['Achieved minimum residual norm NORM(B-A*X) ::: ',num2str(min(resvec))])
 
 

@@ -1,0 +1,45 @@
+# Main settings files. It is used for all src compilation. 
+
+#  You should define the following system variables:
+#  make CPU=clang_release 
+#  or something like that 
+
+ifndef CPU
+   #@echo "CPU is not defined! Set default value"
+   CPU = gcc_cygwin
+endif
+
+# External library names
+DIRECTFN_LIB_NAME = directfn
+
+# Docs generator
+DoxyGenUtil = doxygen
+
+# Choosing the system
+# The MF_PREFIX is defined in every subdir like src_utils, src_vie etc 
+
+
+# ---------------- Platforms ---------------- 
+
+ifeq ($(CPU),gcc_cygwin)
+    include $(MF_PREFIX)/Makefile.gcc_cygwin
+endif
+
+ifeq ($(CPU),nmake_win)
+    include $(MF_PREFIX)/Makefile.nmake_win
+endif
+
+ifeq ($(CPU),clang)
+    include $(MF_PREFIX)/Makefile.clang
+endif
+
+ifeq ($(CPU),gcc620)
+    include $(MF_PREFIX)/Makefile.gcc620
+endif
+
+
+
+# End of the file
+#
+ 
+

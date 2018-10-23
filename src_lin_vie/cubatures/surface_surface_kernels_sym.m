@@ -201,35 +201,13 @@ for face = 1:6
     end
 end
 
-% take the su
+% take the sum of the 36 face-face integrals according to reports eq. 15 
 I_SK = zeros(10,1);
 for l = l_vals
     
     I_SK(l) = sum(sum(I1(:,:,l))) + sum(sum(I2(:,:,l))) + sum(sum(I3(:,:,l))) + sum(sum(I4(:,:,l)));
     
 end
-
-% calculate the system's kernels
-% Gx,x
-I_S(1) =  I_SK(1);
-% G2D,x
-I_S(2) =  I_SK(2);
-% G2D,y
-I_S(3) = -I_SK(4);
-% Gx,2D
-I_S(4) =  I_SK(3);
-% Gy,2D
-I_S(5) = -I_SK(5);
-% G2D,2D
-I_S(6) =  I_SK(8) + I_SK(9);
-% Gz,3D
-I_S(7) = -2*I_SK(7);
-% G3D,z
-I_S(8) = -2*I_SK(6);
-% G2D,3D
-I_S(9) =  I_SK(8) - I_SK(9);
-% G3D,3D
-I_S(10)=  I_SK(8) + I_SK(9) + 4*I_SK(10);
 
 if(dir == 1)
   K = I_SK(l_vals);
