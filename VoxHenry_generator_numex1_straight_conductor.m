@@ -23,13 +23,13 @@ pre_define_the_path_for_folders
 %
 
 % voxel size (deltax)
-Res = 0.5e-6;
+Res = 0.02e-6;
 % inputs for generating conductors with specified lengths and widths of arms
-num_conds = 2; % number of conductors
-num_ports = 2; % number of ports
-len_cond=30.0e-6; % length of conductors
-width_cond=10.0e-6; % width of conductor
-height_cond=10.0e-6; % height of conductor
+num_conds = 1; % number of conductors
+num_ports = 1; % number of ports
+len_cond=10.0e-6; % length of conductors
+width_cond=0.2e-6; % width of conductor
+height_cond=0.2e-6; % height of conductor
 dist_btw_conds=20.0e-6; % distance between centers of conductors
 
 % 
@@ -51,6 +51,7 @@ freq_curr_plot=2.5e9; % frequency for plotting currents
 er = 0;  % epsilon_r of conductors
 %se=[5.8e7 3.77e7]; % conductivity of conductors
 se=5.8e7; % conductivity of conductors
+lL=0.0; % London penetration depth (zero for non superconductive)
 fl_check_domain=0; % set to 1 for only plotting the structure (no simulation)
 fl_check_geo=0; % set to 1 for only plotting the domain (no simulation)
 fl_check_ports=0; % set to 1 for only plotting the port nodes (no simulation)
@@ -141,7 +142,7 @@ pnt_well_cond=[];
 [r] = generategridfrombbox(Res,[bbox_min(1) bbox_max(1)],[bbox_min(2) bbox_max(2)],[bbox_min(3) bbox_max(3)],fl_check_domain);
 
 % assign constitutive parameters
-[idx,epsilon_r,sigma_e,grid_intcon] = intcon_constparams(r,Res,Cnt,Dims,Orients,er,se,fl_check_geo);
+[idx,epsilon_r,sigma_e,lambda_L,grid_intcon] = intcon_constparams(r,Res,Cnt,Dims,Orients,er,se,lL,fl_check_geo);
 
 
 % -------------------------------------------------------------------------

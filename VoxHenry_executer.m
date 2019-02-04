@@ -56,14 +56,17 @@ freq_curr_plot=2.5e9; % frequency for plotting currents
 
 disp(['Reading input file: ', fileinname]);
 % read data from input file
-% 'sigma_e' is a LxMxN array of conductivities. Zero means empty voxel
+% 'sigma_e' is a LxMxN array of conductivities. Zero means empty voxel, if not superconductor.
+%           If superconductor, also 'lambdaL' must be zero to indicate an empty voxel.
+% 'lambdaL' is a LxMxN array of London penetration depths, in case of superconductors.
+%           If zero, and sigma_e is zero, means empty voxel. If there isn't any superconductor at all,
+%           'lambdaL' is empty ( lambdaL = [] ) 
 % 'freq' is the array of required simulation frequencies
 % 'dx' is the voxel side dimension, in meters
 % 'pnt_lft' is the cell array of port node relative positions, positive side 
 % 'pnt_rght' is the cell array of port node relative positions, negative side 
 % 'pnt_well_cond' is the cell array of grounded nodes relative positions 
-[sigma_e, freq, dx, num_ports, pnt_lft, pnt_rght, pnt_well_cond] = pre_input_file(['Input_files', filesep, fileinname]);
-
+[sigma_e, lambdaL, freq, dx, num_ports, pnt_lft, pnt_rght, pnt_well_cond] = pre_input_file(['Input_files', filesep, fileinname]);
 
 % -------------------------------------------------------------------------
 %                         Initialize stuff
@@ -86,14 +89,9 @@ EMconstants
 
 pre_define_structure_params
 
-% setting constitutive parameters for freq
-Mr = epsilon_r - 1j*sigma_e/(eo*omega); % complex relative permittivity
-Mc = Mr - 1.0; % susceptibility
-OneoverMc = 1.0 ./ Mc; % one over susceptibility
-    
 % output to screen a summary of the parameters
 pre_print_out_inputs_generate_consts
-
+    
 % -------------------------------------------------------------------------
 %                  Obtain Nodal Incidence Matrix
 % -------------------------------------------------------------------------
@@ -137,10 +135,11 @@ tini = tic;
 % no need to delay computation of FFT. FFT is a linear operator, and as the frequency-dependent
 % part is not in the circulant tensor, we can just multiply later on by 'ko^2'
 fl_no_fft=0;
-[fN_all2,st_sparse_precon2] = lse_generate_circulant_tensor(dx,1,L,M,N,fl_no_fft);
 % note: must still multiply 'fN_all2' and 'st_sparse_precon2' by 'ko^2' ('ko' is frequency-dependent)
 % ( here we set ko = 1 in the the second parameter when calling 'lse_generate_circulant_tensor',
 % so 'lse_generate_circulant_tensor' will not multiply by the actual 'ko')
+[fN_all2,st_sparse_precon2] = lse_generate_circulant_tensor(dx,1,L,M,N,fl_no_fft);
+
 
 tend = toc(tini);
 disp([' Total time for getting circulant tensor ::: ' ,num2str(tend)]);
@@ -233,20 +232,53 @@ for freq_no=1:num_freq
     Mc = Mr - 1.0; % susceptibility
     OneoverMc = 1.0 ./ Mc; % one over susceptibility
     
+    % if 'lambdaL' contains no element, then we have a normal conductor
+    if isempty(lambdaL)
+        # In case of normal conductors, we just need 1/sigma_e. This parameter is not
+        # frequency-dependent
+        z_real = 1.0 ./ sigma_e; # one over sigma
+        z_imag = [];
+    else      
+        # General formula for superconductors:
+        #
+        # 1       sigma_e*(omega*mu*lambdaL^2)^2              mu*lambdaL^2
+        # ----- = -------------------------------- + 1j*omega*------------------------------- = z_real + z_imag
+        # sigma   (sigma_e*omega*mu*lambdaL^2)^2+1            (sigma_e*omega*mu*lambaL^2)^2+1
+        %
+        den = (omega*mu*sigma_e.*(lambdaL.^2)).^2 + 1;
+        z_real = (sigma_e.*((omega*mu*lambdaL.^2).^2)) ./ den;
+        z_imag = (1j*omega*mu*lambdaL.^2) ./ den;
+        #
+        # Special case: standard conductor
+        # in our case, we use lambaL = 0 for a conductor that is only conducting and not superconducting.
+        # As actually this should be lambdaL -> inf, and its effect is to reduce z_real to 1/sigma_e and null z_imag,
+        # we force this condition when lambdaL == 0
+        lambdaL_zero_and_sigma_e_nonzero = not(lambdaL_nonzero) & sigma_e_nonzero;
+        z_real(lambdaL_zero_and_sigma_e_nonzero) = (1.0 ./ sigma_e)(lambdaL_zero_and_sigma_e_nonzero);
+        z_imag(lambdaL_zero_and_sigma_e_nonzero) = 0.0;
+        # Special case: superconductor with only Cooper pairs
+        # for sigma_e = 0 but lambdaL finite, z_real is null and z_imag reduces to 1j*omega*mu*lambdaL^2;
+        # however this condition is already covered by in the calculation above, with no numerical issues
+        % (den is 1, sigma_e = 0 means z_real is null)
+    end
+    
     % circulant tensor for the current frequency
 
     % no need to compute FFT every time, we already calculated it once for all.
     % FFT is a linear operator, and as the frequency-dependent
     % part is not in the circulant tensor, we can just multiply on by 'ko^2'
-    fN_all = fN_all2*(ko^2);
+    #fN_all = fN_all2*(ko^2);
     %fN_all = fft_operator(fN_all);
-    st_sparse_precon = st_sparse_precon2 * (ko^2);
-
+    %st_sparse_precon = st_sparse_precon2 * (ko^2);
+    % we can just multiply by 1j*omega*mu
+    fN_all = (1j*omega*mu)*fN_all2;
+    st_sparse_precon = (1j*omega*mu)*st_sparse_precon2;
+    
     sim_CPU_lse(freq_no,1,1)=toc(tinisim); % CPU time for FFT + prep data
  
     % prepare the preconditioner
     tinisim = tic;
-    lse_sparse_precon_prepare(dx,freq,OneoverMc,idxS,st_sparse_precon,nodeid_4_grnd,nodeid_4_injectcurr,Ae);
+    lse_sparse_precon_prepare(dx,freq,z_real,z_imag,idxS,st_sparse_precon,nodeid_4_grnd,nodeid_4_injectcurr,Ae);
     sim_CPU_lse(freq_no,port_no,2)=toc(tinisim); % CPU time for sparse_precon
         
     for port_no=1:num_ports
@@ -260,7 +292,7 @@ for freq_no=1:num_freq
         % Solve the system iteratively
         % Define the handle for matvect (remark: all other parameters beyond 'J'
         % are assigned at *this* time and are not modified any more later on when the function is called)
-        fACPU   = @(J)lse_matvect_mult(J, fN_all, Ae, OneoverMc, dx, freq, idxS5, nodeid_4_grnd, nodeid_4_injectcurr);
+        fACPU   = @(J)lse_matvect_mult(J, fN_all, Ae, z_real, z_imag, dx, freq, idxS5, nodeid_4_grnd, nodeid_4_injectcurr);
         % Define the handle for the preconditioner multiplication (remark: all other parameters beyond 'JOut_full_in'
         % are assigned at *this* time and not modified any more later on when the function is called)
         fPCPU = @(JOut_full_in)lse_sparse_precon_multiply(JOut_full_in, Ae, nodeid_4_grnd, nodeid_4_injectcurr, prectol);

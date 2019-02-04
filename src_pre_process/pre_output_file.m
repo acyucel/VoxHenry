@@ -74,10 +74,17 @@ fprintf(fout, '*\n');
 fprintf(fout, 'StartVoxelList\n');
 % transform the linear intexes 'idxS' corresponding to non-empty voxels
 % to voxel indices along x, y and z
-[voxL,voxM,voxN] = ind2sub(size(sigma_e), idxS);  
-for j = 1:size(idxS,1)
-   % output the conductor voxel indices and conductivity
-   fprintf(fout, 'V %d %d %d %g\r\n', voxL(j), voxM(j), voxN(j), sigma_e(voxL(j), voxM(j), voxN(j)));
+[voxL,voxM,voxN] = ind2sub(size(sigma_e), idxS); 
+if isempty(lambdaL)
+    for j = 1:size(idxS,1)
+       % output the conductor voxel indices and conductivity
+       fprintf(fout, 'V %d %d %d %g\r\n', voxL(j), voxM(j), voxN(j), sigma_e(voxL(j), voxM(j), voxN(j)));
+    end
+else
+    for j = 1:size(idxS,1)
+       % output the conductor voxel indices and conductivity
+       fprintf(fout, 'V %d %d %d %g %g\r\n', voxL(j), voxM(j), voxN(j), sigma_e(voxL(j), voxM(j), voxN(j)), lambdaL(voxL(j), voxM(j), voxN(j)));
+    end  
 end
 fprintf(fout, 'EndVoxelList\n');
 

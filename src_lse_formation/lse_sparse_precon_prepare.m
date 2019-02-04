@@ -1,4 +1,4 @@
-function lse_sparse_precon_prepare(dx,freq,OneoverMc,idxS,st_sparse_precon,nodeid_4_grnd,nodeid_4_injectcurr,Ae)
+function lse_sparse_precon_prepare(dx,freq,z_real,z_imag,idxS,st_sparse_precon,nodeid_4_grnd,nodeid_4_injectcurr,Ae)
 global A_inv LL UU PP QQ RR Sch_sparse slct_decomp_sch fl_cholmod A_noninv W fPSchur precond
 global fl_precon_type
 
@@ -37,11 +37,20 @@ eo = 1/co^2/mu;
 
 % 1) Compute A_inv matrix
 tic
-% get the actual values of 'OneoverMc'. This allows different conductivites for each voxel.
-OneoverMc_dum=OneoverMc(idxS);
-diag_pulse=1./((1/(j*omega*eo))*((1/dx*OneoverMc_dum)-st_sparse_precon(1)));
-diag_2Dlinear=1./((1/(j*omega*eo))*((dx/6*OneoverMc_dum*(1/(dx^2)))-st_sparse_precon(2)));
-diag_3Dlinear=1./((1/(j*omega*eo))*((dx/2*OneoverMc_dum*(1/(dx^2)))-st_sparse_precon(3)));
+% get the actual values of 'OneoverSigma_e'. This allows different conductivites for each voxel.
+z_real_nonemptyvoxel = z_real(idxS);
+# if not superconductor
+if isempty(z_imag)
+    diag_pulse=1./(z_real_nonemptyvoxel/dx + st_sparse_precon(1));
+    diag_2Dlinear=1./(z_real_nonemptyvoxel/(6*dx) + st_sparse_precon(2));
+    diag_3Dlinear=1./(z_real_nonemptyvoxel/(2*dx) + st_sparse_precon(3));
+else
+    z_imag_nonemptyvoxel = z_imag(idxS);
+    diag_pulse=1./((z_real_nonemptyvoxel+z_imag_nonemptyvoxel)/dx + st_sparse_precon(1));
+    diag_2Dlinear=1./((z_real_nonemptyvoxel+z_imag_nonemptyvoxel)/(6*dx) + st_sparse_precon(2));
+    diag_3Dlinear=1./((z_real_nonemptyvoxel+z_imag_nonemptyvoxel)/(2*dx) + st_sparse_precon(3));
+end
+  
 inds=zeros(num_curr,3);
 % rows for sparse 'A_inv' formation
 inds(1:num_curr,1)=[1:1:num_curr];

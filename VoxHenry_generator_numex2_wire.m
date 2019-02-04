@@ -49,6 +49,7 @@ freq_curr_plot=2.5e9; % frequency for plotting currents
 
 er = 0;  % epsilon_r of conductors
 se=5.8e7; % conductivity of conductors
+lL=0.0; % London penetration depth (zero for non superconductive)
 fl_check_domain=0; % set to 1 for only plotting the structure (no simulation)
 fl_check_geo=0; % set to 1 for only plotting the domain (no simulation)
 fl_check_ports=0; % set to 1 for only plotting the port nodes (no simulation)
@@ -74,7 +75,7 @@ Orients=[num2str(Orients);Orients_tmp];
 % -------------------------------------------------------------------------
 
 
-disp(['Model type: cylindrical wire with radius ', num2str(dia_cond), ' m and length ', num2str(len_cond), ' m']);
+disp(['Model type: cylindrical wire with diameter ', num2str(dia_cond), ' m and length ', num2str(len_cond), ' m']);
 disp('------------------------------------------------------------------')
 
 firstline = sprintf('* Model type: cylindrical wire with radius %g m and length %g m\n', dia_cond, len_cond);
@@ -100,7 +101,7 @@ bbox_max=[len_cond dia_cond dia_cond]; % max coordinates of bbox
 [r] = generategridfrombbox(Res,[bbox_min(1) bbox_max(1)],[bbox_min(2) bbox_max(2)],[bbox_min(3) bbox_max(3)],fl_check_domain);
 
 % assign constitutive parameters
-[idx,epsilon_r,sigma_e,grid_intcon] = intcon_constparams(r,Res,Cnt,Dims,Orients,er,se,fl_check_geo);
+[idx,epsilon_r,sigma_e,lambda_L,grid_intcon] = intcon_constparams(r,Res,Cnt,Dims,Orients,er,se,lL,fl_check_geo);
 
 % removing the elements outside of circle of each cross-sectional area
 anchor_pnt_y_z=[rad_cond rad_cond];
@@ -111,6 +112,9 @@ for kk=1:size(grid_intcon,1)
             if (norm(squeeze(grid_intcon(kk,ll,mm,1:3))-anchor_pnt) > rad_cond)
                 epsilon_r(kk,ll,mm)=1;
                 sigma_e(kk,ll,mm)=0;
+                if any(lL)
+                    lambda_L(kk,ll,mm)=0;
+                end
                 grid_intcon(kk,ll,mm,1:3)=0;
             end
                 

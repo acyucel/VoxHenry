@@ -1,4 +1,4 @@
-function [idx,epsilon_r,sigma_e,grid_intcon] = intcon_constparams(r,Res,Cnt,Dims,Orients,e_r,s_e,fl_plot_intcons)
+function [idx,epsilon_r,sigma_e,lambdaL,grid_intcon] = intcon_constparams(r,Res,Cnt,Dims,Orients,e_r,s_e,l_L,fl_plot_intcons)
 %%    Defines Constitutive parameters of interconnects
 % _________________________________________________________________________
 %
@@ -57,6 +57,12 @@ num_intcon=size(Cnt,1);
 if size(s_e,2) ~= num_intcon
     s_e(1:num_intcon) = ones(1,2)*s_e(1);
 end
+% if 'l_L' is a scalar, extend it to all the conductors
+% otherwise, 'l_L' specifies the London penetration depth for each conductor
+% Note that l_L == 0 for one or more conductors means that it is not a superconductor
+if size(l_L,2) ~= num_intcon
+    l_L(1:num_intcon) = ones(1,2)*l_L(1);
+end
   
 % define bounds for each interconnect
 x_bnd=zeros(num_intcon,2);y_bnd=zeros(num_intcon,2);z_bnd=zeros(num_intcon,2);
@@ -84,6 +90,14 @@ end
 
 boolean_tens=zeros(L,M,N);
 sigma_e = zeros(L,M,N);
+% if l_L is not all zeros, we actually have one or more superconductor,
+% so we allocate the 'lambdaL' tensor
+if any(l_L)
+  lambdaL = zeros(L,M,N);
+else
+  % no supercondoctors
+  lambdaL = []
+end
 
 tola=1e-12;
 for ll=1:L
@@ -98,7 +112,9 @@ for ll=1:L
                     boolean_tens(ll,mm,nn)=1;
                     
                     sigma_e(ll,mm,nn) = s_e(kk);
-                    
+                    if any(l_L)
+                      lambdaL(ll,mm,nn) = l_L(kk);
+                    end
                 end
             end
         end

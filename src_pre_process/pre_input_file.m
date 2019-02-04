@@ -1,4 +1,4 @@
-function [sigma_e, freq, dx, num_ports, pnt_lft, pnt_rght, pnt_well_cond] = pre_input_file(fileinname)
+function [sigma_e, lambdaL, freq, dx, num_ports, pnt_lft, pnt_rght, pnt_well_cond] = pre_input_file(fileinname)
 
 tini = tic;
 
@@ -24,6 +24,7 @@ pnt_lft = {};
 pnt_rght = {};
 pnt_well_cond = [];
 portnames = {};
+supercond = 0;
 
 % get first line 
 line = fgetl(fid);
@@ -48,17 +49,30 @@ while ischar(line) == 1
                 dx = str2double(scanline{2});
             end
   	 	elseif strcmpi(scanline{1},'LMN') == 1
-            if size(scanline,2) >= 4
+          if size(scanline,2) >= 4
                 Lsize = str2double(scanline{2});
                 Msize = str2double(scanline{3});
                 Nsize = str2double(scanline{4});
                 % pre-allocate sigma_e
                 sigma_e = zeros(Lsize, Msize, Nsize);
-            end
+                % pre-allocate lambdaL
+                lambdaL = zeros(Lsize, Msize, Nsize);
+          end
+  	 	elseif strcmpi(scanline{1},'superconductor') == 1
+          supercond = 1;
   	 	elseif strcmpi(scanline{1},'startvoxellist') == 1
             % fast scan of voxel list
-            voxellist = textscan(fid, 'V %d %d %d %f', 'ReturnOnError', 1);
-            sigma_e(sub2ind(size(sigma_e), voxellist{1}, voxellist{2}, voxellist{3})) = voxellist{4};
+            if supercond == 0
+                % flags mean: do not stop on error
+                voxellist = textscan(fid, 'V %d %d %d %f', 'ReturnOnError', 1);
+                sigma_e(sub2ind(size(sigma_e), voxellist{1}, voxellist{2}, voxellist{3})) = voxellist{4};
+            else
+                % flags mean: do not stop on error
+                voxellist = textscan(fid, 'V %d %d %d %f %f', 'ReturnOnError', 1);
+                sigma_e(sub2ind(size(sigma_e), voxellist{1}, voxellist{2}, voxellist{3})) = voxellist{4};
+                % lambda penetration depth in case of superconductors
+                lambdaL(sub2ind(size(lambdaL), voxellist{1}, voxellist{2}, voxellist{3})) = voxellist{5};
+            end
   	 	elseif strcmpi(scanline{1},'N') == 1
             if size(scanline,2) >= 7
                 pname = scanline{2};
@@ -92,6 +106,11 @@ while ischar(line) == 1
     end
    
     line = fgetl(fid);
+end
+
+% if no superconductor, let's empty the 'lambdaL' tensor, so we know these are standard conductors 
+if supercond == 0
+    lambdaL = []
 end
 
 % sanity checks

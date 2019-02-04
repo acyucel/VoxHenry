@@ -1,4 +1,4 @@
-function [JOut_full]=lse_matvect_mult(JIn0, fN_all, Ae, OneoverMc, dx, freq, idx, nodeid_4_grnd,nodeid_4_injectcurr)
+function [JOut_full]=lse_matvect_mult(JIn0, fN_all, Ae, z_real, z_imag, dx, freq, idx, nodeid_4_grnd, nodeid_4_injectcurr)
 global fl_precon_type
 
 % -------------------------------------------------------------------------
@@ -24,7 +24,7 @@ num_curr=size(Ae,2);
 [LfN, MfN, NfN, ~] = size(fN_all);
 
 % domain dimensions
-[L, M, N] = size(OneoverMc);
+[L, M, N] = size(z_real);
 
 %GPU_flag = 0;
 
@@ -91,23 +91,33 @@ Jout3 = Jout3 + fN_all(:,:,:,5) .* fJ; % Gz3d*J3d
 Jout4 = Jout4 + fN_all(:,:,:,6) .* fJ; % G2d3d*J3d
 Jout5 = Jout5 + fN_all(:,:,:,7) .* fJ; % G3d3d*J3d
 
-
-
-% apply ifft and add identity term
+% apply ifft 
 Jout1 = ifftn(Jout1);
-JOut(:,:,:,1) = (1/dx) .* OneoverMc .* JIn(:,:,:,1) - Jout1(1:L,1:M,1:N);
 Jout2 = ifftn(Jout2);
-JOut(:,:,:,2) = (1/dx) .* OneoverMc .* JIn(:,:,:,2) - Jout2(1:L,1:M,1:N);
 Jout3 = ifftn(Jout3);
-JOut(:,:,:,3) = (1/dx) .* OneoverMc .* JIn(:,:,:,3) - Jout3(1:L,1:M,1:N);
 Jout4 = ifftn(Jout4);
-JOut(:,:,:,4) = (dx/6/(dx^2)) .* OneoverMc .* JIn(:,:,:,4) - Jout4(1:L,1:M,1:N);
 Jout5 = ifftn(Jout5);
-JOut(:,:,:,5) = (dx/2/(dx^2)) .* OneoverMc .* JIn(:,:,:,5) - Jout5(1:L,1:M,1:N);
+
+% and add identity term
+%
+% if not superconductor
+if isempty(z_imag)
+    JOut(:,:,:,1) = (1/dx) .* z_real .* JIn(:,:,:,1) + Jout1(1:L,1:M,1:N);
+    JOut(:,:,:,2) = (1/dx) .* z_real .* JIn(:,:,:,2) + Jout2(1:L,1:M,1:N);
+    JOut(:,:,:,3) = (1/dx) .* z_real .* JIn(:,:,:,3) + Jout3(1:L,1:M,1:N);
+    JOut(:,:,:,4) = (1/(6*dx)) .* z_real .* JIn(:,:,:,4) + Jout4(1:L,1:M,1:N);
+    JOut(:,:,:,5) = (1/(2*dx)) .* z_real .* JIn(:,:,:,5) + Jout5(1:L,1:M,1:N);
+else
+    JOut(:,:,:,1) = (1/dx) .* (z_real+z_imag) .* JIn(:,:,:,1) + Jout1(1:L,1:M,1:N);
+    JOut(:,:,:,2) = (1/dx) .* (z_real+z_imag) .* JIn(:,:,:,2) + Jout2(1:L,1:M,1:N);
+    JOut(:,:,:,3) = (1/dx) .* (z_real+z_imag) .* JIn(:,:,:,3) + Jout3(1:L,1:M,1:N);
+    JOut(:,:,:,4) = (1/(6*dx)) .* (z_real+z_imag) .* JIn(:,:,:,4) + Jout4(1:L,1:M,1:N);
+    JOut(:,:,:,5) = (1/(2*dx)) .* (z_real+z_imag) .* JIn(:,:,:,5) + Jout5(1:L,1:M,1:N);
+end
 
 % multiply by 1/(jweps0)
 
-JOut(:,:,:,:) = JOut(:,:,:,:) * oneoverjomegaeo; 
+%JOut(:,:,:,:) = JOut(:,:,:,:) * oneoverjomegaeo; 
 
 % -------------------------------------------------------------------------
 % Return local coordinates related to material positions

@@ -59,13 +59,13 @@ z = squeeze(z);
 
 % if the input is a single element, takes negative and positive
 if length(x) == 1
-    x = [-x x];
+    x = [-x x]
 end
 if length(y) == 1
-    y = [-y y];
+    y = [-y y]
 end
 if length(z) == 1
-    z = [-z z];
+    z = [-z z]
 end
 
 % -------------------------------------------------------------------------
@@ -80,7 +80,9 @@ bbox_elem(3)=z(2)-z(1);
 %2) finding number of boxes along x, y, and z axes
 
 for kk=1:3
-    nelem_xyz(kk)=floor(bbox_elem(kk)/res);
+    % adding slight perturbation (1e-12) to avoid numerical errors leading
+    % to one less voxel when there are small dimensions
+    nelem_xyz(kk)=floor(bbox_elem(kk)/res + 1e-12);
 end
    
 % 3) Print out the location of local origin
