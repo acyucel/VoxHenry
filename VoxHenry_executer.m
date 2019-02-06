@@ -133,11 +133,11 @@ disp([' Generating circulant tensor...']);
 tini = tic;
 
 % no need to delay computation of FFT. FFT is a linear operator, and as the frequency-dependent
-% part is not in the circulant tensor, we can just multiply later on by 'ko^2'
+% part is not in the circulant tensor, we can just multiply later on by '1i*omega*mu'
 fl_no_fft=0;
-% note: must still multiply 'fN_all2' and 'st_sparse_precon2' by 'ko^2' ('ko' is frequency-dependent)
+% note: must still multiply 'fN_all2' and 'st_sparse_precon2' by '1i*omega*mu'
 % ( here we set ko = 1 in the the second parameter when calling 'lse_generate_circulant_tensor',
-% so 'lse_generate_circulant_tensor' will not multiply by the actual 'ko')
+% so 'lse_generate_circulant_tensor' will not multiply by the actual 'ko'; 'ko' is frequency-dependent)
 [fN_all2,st_sparse_precon2] = lse_generate_circulant_tensor(dx,1,L,M,N,fl_no_fft);
 
 
@@ -226,12 +226,7 @@ for freq_no=1:num_freq
     disp('-----------------------------------------------------')
     disp(['Simulation for frequency : ',num2str(freq),' started! ', 'freq pnt: ',num2str(freq_no), ' / ', num2str(num_freq)])
     disp('-----------------------------------------------------')
-    
-    % setting new constitutive parameters for new freq
-    Mr = epsilon_r - 1j*sigma_e/(eo*omega); % complex relative permittivity
-    Mc = Mr - 1.0; % susceptibility
-    OneoverMc = 1.0 ./ Mc; % one over susceptibility
-    
+       
     % if 'lambdaL' contains no element, then we have a normal conductor
     if isempty(lambdaL)
         # In case of normal conductors, we just need 1/sigma_e. This parameter is not
@@ -266,11 +261,7 @@ for freq_no=1:num_freq
 
     % no need to compute FFT every time, we already calculated it once for all.
     % FFT is a linear operator, and as the frequency-dependent
-    % part is not in the circulant tensor, we can just multiply on by 'ko^2'
-    #fN_all = fN_all2*(ko^2);
-    %fN_all = fft_operator(fN_all);
-    %st_sparse_precon = st_sparse_precon2 * (ko^2);
-    % we can just multiply by 1j*omega*mu
+    % part is not in the circulant tensor, we can just multiply on by '1i*omega*mu'
     fN_all = (1j*omega*mu)*fN_all2;
     st_sparse_precon = (1j*omega*mu)*st_sparse_precon2;
     
@@ -278,7 +269,7 @@ for freq_no=1:num_freq
  
     % prepare the preconditioner
     tinisim = tic;
-    lse_sparse_precon_prepare(dx,freq,z_real,z_imag,idxS,st_sparse_precon,nodeid_4_grnd,nodeid_4_injectcurr,Ae);
+    lse_sparse_precon_prepare(dx,z_real,z_imag,idxS,st_sparse_precon,nodeid_4_grnd,nodeid_4_injectcurr,Ae);
     sim_CPU_lse(freq_no,port_no,2)=toc(tinisim); % CPU time for sparse_precon
         
     for port_no=1:num_ports
@@ -292,7 +283,7 @@ for freq_no=1:num_freq
         % Solve the system iteratively
         % Define the handle for matvect (remark: all other parameters beyond 'J'
         % are assigned at *this* time and are not modified any more later on when the function is called)
-        fACPU   = @(J)lse_matvect_mult(J, fN_all, Ae, z_real, z_imag, dx, freq, idxS5, nodeid_4_grnd, nodeid_4_injectcurr);
+        fACPU   = @(J)lse_matvect_mult(J, fN_all, Ae, z_real, z_imag, dx, idxS5, nodeid_4_grnd, nodeid_4_injectcurr);
         % Define the handle for the preconditioner multiplication (remark: all other parameters beyond 'JOut_full_in'
         % are assigned at *this* time and not modified any more later on when the function is called)
         fPCPU = @(JOut_full_in)lse_sparse_precon_multiply(JOut_full_in, Ae, nodeid_4_grnd, nodeid_4_injectcurr, prectol);
@@ -351,7 +342,12 @@ end
 %                         Storing Data
 % -------------------------------------------------------------------------
 
-
+% setting new constitutive parameters for new freq
+Mr = epsilon_r - 1j*sigma_e/(eo*omega); % complex relative permittivity
+% this is needed for visualization. Actually used to know which voxels are empty and which not
+Mc = Mr - 1.0; % susceptibility
+%OneoverMc = 1.0 ./ Mc; % one over susceptibility
+    
 disp('-----------------------------------------------------')
 disp(['Saving Data...'])
 

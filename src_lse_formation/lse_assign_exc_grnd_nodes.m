@@ -25,14 +25,14 @@ for jj=1:size(pnt_lft{port_no},1)
         end
     end
     if nonemptyvoxelID == 0
-        disp(['Internal error: cannot find non-empty voxel corresponding to voxel ', num2str(pnt_lft{port_no}(jj, 1)), ',',  num2str(pnt_lft{port_no}(jj, 2)), ',', num2str(pnt_lft{port_no}(jj, 3))]);
+        disp(['Internal error: cannot find left non-empty voxel corresponding to voxel ', num2str(pnt_lft{port_no}(jj, 1)), ',',  num2str(pnt_lft{port_no}(jj, 2)), ',', num2str(pnt_lft{port_no}(jj, 3))]);
     end
     nodeid = all_panels_ids(nonemptyvoxelID, pnt_lft{port_no}(jj,4));
     nodeid_4_injectcurr = [nodeid_4_injectcurr; nodeid];
 end
 
 for jj=1:size(pnt_rght{port_no},1)
-    % the 'port_no'-th cells of 'ptn_lft' contains the array of nodes belonging
+    % the 'port_no'-th cells of 'ptn_rght' contains the array of nodes belonging
     % to the 'port_no'-th port.
     % We scan each element of this array, that contains in the first three
     % columns the voxel position in L,M,N coordinates and in the fourth
@@ -53,7 +53,7 @@ for jj=1:size(pnt_rght{port_no},1)
         end
     end
     if nonemptyvoxelID == 0
-        disp(['Internal error: cannot find non-empty voxel corresponding to voxel ', num2str(pnt_rght{port_no}(jj, 1)), ',',  num2str(pnt_rght{port_no}(jj, 2)), ',', num2str(pnt_rght{port_no}(jj, 3))]);
+        disp(['Internal error: cannot find right non-empty voxel corresponding to voxel ', num2str(pnt_rght{port_no}(jj, 1)), ',',  num2str(pnt_rght{port_no}(jj, 2)), ',', num2str(pnt_rght{port_no}(jj, 3))]);
     end
     nodeid = all_panels_ids(nonemptyvoxelID, pnt_rght{port_no}(jj,4));
     nodeid_4_grnd = [nodeid_4_grnd; nodeid];

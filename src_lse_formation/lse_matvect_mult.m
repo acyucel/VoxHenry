@@ -1,4 +1,4 @@
-function [JOut_full]=lse_matvect_mult(JIn0, fN_all, Ae, z_real, z_imag, dx, freq, idx, nodeid_4_grnd, nodeid_4_injectcurr)
+function [JOut_full]=lse_matvect_mult(JIn0, fN_all, Ae, z_real, z_imag, dx, idx, nodeid_4_grnd, nodeid_4_injectcurr)
 global fl_precon_type
 
 % -------------------------------------------------------------------------
@@ -10,12 +10,6 @@ fl_gpu = 0;
 fl_profile = 0;
 
 tic
-% constants
-mu = 4*pi*1e-7;
-co = 299792458; 
-eo = 1/co^2/mu;
-omega = 2*pi*freq;
-oneoverjomegaeo=1/(j*omega*eo);
 
 num_node=size(Ae,1);
 num_curr=size(Ae,2);
@@ -115,9 +109,6 @@ else
     JOut(:,:,:,5) = (1/(2*dx)) .* (z_real+z_imag) .* JIn(:,:,:,5) + Jout5(1:L,1:M,1:N);
 end
 
-% multiply by 1/(jweps0)
-
-%JOut(:,:,:,:) = JOut(:,:,:,:) * oneoverjomegaeo; 
 
 % -------------------------------------------------------------------------
 % Return local coordinates related to material positions

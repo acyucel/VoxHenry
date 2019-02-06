@@ -92,7 +92,7 @@ bbox_max=[2*(rad_wire+rad_loop)+1e-12 2*(rad_wire+rad_loop)+1e-12 2*rad_wire+1e-
 [r] = generategridfrombbox(Res,[bbox_min(1) bbox_max(1)],[bbox_min(2) bbox_max(2)],[bbox_min(3) bbox_max(3)],fl_check_domain);
 
 % assign constitutive parameters
-[idx,epsilon_r,sigma_e,lambda_L,grid_intcon] = intcon_constparams(r,Res,Cnt,Dims,Orients,er,se,lL,fl_check_geo);
+[idx,epsilon_r,sigma_e,lambdaL,grid_intcon] = intcon_constparams(r,Res,Cnt,Dims,Orients,er,se,lL,fl_check_geo);
 
 % removing the elements outside of circular loop (torus - equation)
 shft_org_torrus=[(rad_wire+rad_loop) (rad_wire+rad_loop) rad_wire];
@@ -105,7 +105,7 @@ for kk=1:size(grid_intcon,1)
                 epsilon_r(kk,ll,mm)=1;
                 sigma_e(kk,ll,mm)=0;
                 if any(lL)
-                    lambda_L(kk,ll,mm)=0;
+                    lambdaL(kk,ll,mm)=0;
                 end
                 grid_intcon(kk,ll,mm,1:3)=0;
             end
@@ -115,7 +115,7 @@ for kk=1:size(grid_intcon,1)
                 epsilon_r(kk,ll,mm)=1;
                 sigma_e(kk,ll,mm)=0;
                 if any(lL)
-                    lambda_L(kk,ll,mm)=0;
+                    lambdaL(kk,ll,mm)=0;
                 end
                 grid_intcon(kk,ll,mm,1:3)=0;
             end
@@ -143,7 +143,7 @@ pnt_lft=cell(num_ports,1);
 pnt_rght=cell(num_ports,1);
 ind_box_exc=round((((rad_wire+rad_loop)-Res/2)-Res/2)/(Res))+1;
 dum=1;
-if isempty(lambda_L)
+if isempty(lambdaL)
     for kk=ind_box_exc:ind_box_exc
         for ll=1:size(grid_intcon,2)
             for mm=1:size(grid_intcon,3)
@@ -159,7 +159,7 @@ else
     for kk=ind_box_exc:ind_box_exc
         for ll=1:size(grid_intcon,2)
             for mm=1:size(grid_intcon,3)
-                if ( (sigma_e(kk,ll,mm) > 0 || lambda_L(kk,ll,mm) > 0) && squeeze(grid_intcon(kk,ll,mm,2)) < (rad_wire+rad_loop)) % conductor
+                if ( (sigma_e(kk,ll,mm) > 0 || lambdaL(kk,ll,mm) > 0) && squeeze(grid_intcon(kk,ll,mm,2)) < (rad_wire+rad_loop)) % conductor
                     tmp_coor=squeeze(grid_intcon(kk,ll,mm,1:3));
                     pnt_lft{1}(dum,1:3)=[tmp_coor(1)+Res/2 tmp_coor(2) tmp_coor(3)];
                     dum=dum+1;
@@ -171,7 +171,7 @@ end
 
 ind_box_grnd=round((((rad_wire+rad_loop)+3*Res/2)-Res/2)/(Res))+1;
 dum=1;
-if isempty(lambda_L)
+if isempty(lambdaL)
     for kk=ind_box_grnd:ind_box_grnd
         for ll=1:size(grid_intcon,2)
             for mm=1:size(grid_intcon,3)
@@ -187,7 +187,7 @@ else
     for kk=ind_box_grnd:ind_box_grnd
         for ll=1:size(grid_intcon,2)
             for mm=1:size(grid_intcon,3)
-                if ((sigma_e(kk,ll,mm) > 0 || lambda_L(kk,ll,mm) > 0) && squeeze(grid_intcon(kk,ll,mm,2)) < (rad_wire+rad_loop) ) % conductor
+                if ((sigma_e(kk,ll,mm) > 0 || lambdaL(kk,ll,mm) > 0) && squeeze(grid_intcon(kk,ll,mm,2)) < (rad_wire+rad_loop) ) % conductor
                     tmp_coor=squeeze(grid_intcon(kk,ll,mm,1:3));
                     pnt_rght{1}(dum,1:3)=[tmp_coor(1)-Res/2 tmp_coor(2) tmp_coor(3)];
                     dum=dum+1;

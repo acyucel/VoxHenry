@@ -10,7 +10,7 @@ dx=1e-07
 * Voxel grid dimension in voxel units; x, y, z
 LMN=50,10,10
 
-* specify superconductor
+* Specify there are superconductors
 Superconductor
 
 * Voxel list

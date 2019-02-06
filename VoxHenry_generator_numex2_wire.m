@@ -101,7 +101,7 @@ bbox_max=[len_cond dia_cond dia_cond]; % max coordinates of bbox
 [r] = generategridfrombbox(Res,[bbox_min(1) bbox_max(1)],[bbox_min(2) bbox_max(2)],[bbox_min(3) bbox_max(3)],fl_check_domain);
 
 % assign constitutive parameters
-[idx,epsilon_r,sigma_e,lambda_L,grid_intcon] = intcon_constparams(r,Res,Cnt,Dims,Orients,er,se,lL,fl_check_geo);
+[idx,epsilon_r,sigma_e,lambdaL,grid_intcon] = intcon_constparams(r,Res,Cnt,Dims,Orients,er,se,lL,fl_check_geo);
 
 % removing the elements outside of circle of each cross-sectional area
 anchor_pnt_y_z=[rad_cond rad_cond];
@@ -113,7 +113,7 @@ for kk=1:size(grid_intcon,1)
                 epsilon_r(kk,ll,mm)=1;
                 sigma_e(kk,ll,mm)=0;
                 if any(lL)
-                    lambda_L(kk,ll,mm)=0;
+                    lambdaL(kk,ll,mm)=0;
                 end
                 grid_intcon(kk,ll,mm,1:3)=0;
             end

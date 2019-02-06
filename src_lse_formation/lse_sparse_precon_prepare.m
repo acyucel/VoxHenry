@@ -1,4 +1,4 @@
-function lse_sparse_precon_prepare(dx,freq,z_real,z_imag,idxS,st_sparse_precon,nodeid_4_grnd,nodeid_4_injectcurr,Ae)
+function lse_sparse_precon_prepare(dx,z_real,z_imag,idxS,st_sparse_precon,nodeid_4_grnd,nodeid_4_injectcurr,Ae)
 global A_inv LL UU PP QQ RR Sch_sparse slct_decomp_sch fl_cholmod A_noninv W fPSchur precond
 global fl_precon_type
 
@@ -29,11 +29,6 @@ tic_Assembly = tic;
 num_node = size(Ae,1);
 num_curr = size(Ae,2);
 num_curr_one5th = num_curr/5;
-
-omega = 2*pi*freq;
-mu = 4*pi*1e-7;
-co = 299792458;
-eo = 1/co^2/mu;
 
 % 1) Compute A_inv matrix
 tic

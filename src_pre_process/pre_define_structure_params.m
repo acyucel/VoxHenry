@@ -18,7 +18,8 @@ idxS5 = [idxS; nD+idxS; 2*nD+idxS; 3*nD+idxS; 4*nD+idxS]; % for currents
 % Constitutive parameters
 % due to lowest frequency if multiple frequency is defined
 
-% 'epsilon_r' 3D matrix is not strictly needed - might use simply zero
+% 'epsilon_r' 3D matrix is not strictly needed for the simulation - might use simply zero
+% however it is used for post-processing visualization (through 'Mc', see VoxHenry_executer.m)
 epsilon_r = ones(size(sigma_e));
 epsilon_r(idxS) = 0.0;
 

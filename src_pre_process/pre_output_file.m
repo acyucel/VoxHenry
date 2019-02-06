@@ -67,6 +67,12 @@ fprintf(fout, '* Voxel grid dimension in voxel units; x, y, z\n');
 fprintf(fout, 'LMN=%d,%d,%d\n', L, M, N);
 fprintf(fout, '\n');
 
+if !isempty(lambdaL)
+    fprintf(fout, '* Specify there are superconductors\n');
+    fprintf(fout, 'Superconductor\n');
+    fprintf(fout, '\n');
+end
+
 fprintf(fout, '* Voxel list\n');
 fprintf(fout, '* Format is:\n');
 fprintf(fout, '* V <index_x> <index_y> <index_z> <conductivity S/m>\n');
