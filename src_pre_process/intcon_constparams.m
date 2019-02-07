@@ -55,13 +55,13 @@ num_intcon=size(Cnt,1);
 % if 's_e' is a scalar, extend it to all the conductors
 % otherwise, 's_e' specifies the conductivity for each conductor
 if size(s_e,2) ~= num_intcon
-    s_e(1:num_intcon) = ones(1,2)*s_e(1);
+    s_e(1:num_intcon) = ones(1,num_intcon)*s_e(1);
 end
 % if 'l_L' is a scalar, extend it to all the conductors
 % otherwise, 'l_L' specifies the London penetration depth for each conductor
 % Note that l_L == 0 for one or more conductors means that it is not a superconductor
 if size(l_L,2) ~= num_intcon
-    l_L(1:num_intcon) = ones(1,2)*l_L(1);
+    l_L(1:num_intcon) = ones(1,num_intcon)*l_L(1);
 end
   
 % define bounds for each interconnect
