@@ -36,7 +36,7 @@ else
       disp(['Skin depth at max freq = ', num2str(skin_depth)])
     end
 end
-if !isempty(lambdaL)
+if ~isempty(lambdaL)
   lL = max(max(max(lambdaL)));
   disp(['London penetration depth (max) = ', num2str(lL)])
 end    

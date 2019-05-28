@@ -229,31 +229,32 @@ for freq_no=1:num_freq
        
     % if 'lambdaL' contains no element, then we have a normal conductor
     if isempty(lambdaL)
-        # In case of normal conductors, we just need 1/sigma_e. This parameter is not
-        # frequency-dependent
-        z_real = 1.0 ./ sigma_e; # one over sigma
+        % In case of normal conductors, we just need 1/sigma_e. This parameter is not
+        % frequency-dependent
+        z_real = 1.0 ./ sigma_e; % one over sigma
         z_imag = [];
     else      
-        # General formula for superconductors:
-        #
-        # 1       sigma_e*(omega*mu*lambdaL^2)^2              mu*lambdaL^2
-        # ----- = -------------------------------- + 1j*omega*------------------------------- = z_real + z_imag
-        # sigma   (sigma_e*omega*mu*lambdaL^2)^2+1            (sigma_e*omega*mu*lambaL^2)^2+1
+        % General formula for superconductors:
+        %
+        % 1       sigma_e*(omega*mu*lambdaL^2)^2              mu*lambdaL^2
+        % ----- = -------------------------------- + 1j*omega*------------------------------- = z_real + z_imag
+        % sigma   (sigma_e*omega*mu*lambdaL^2)^2+1            (sigma_e*omega*mu*lambaL^2)^2+1
         %
         den = (omega*mu*sigma_e.*(lambdaL.^2)).^2 + 1;
         z_real = (sigma_e.*((omega*mu*lambdaL.^2).^2)) ./ den;
         z_imag = (1j*omega*mu*lambdaL.^2) ./ den;
-        #
-        # Special case: standard conductor
-        # in our case, we use lambaL = 0 for a conductor that is only conducting and not superconducting.
-        # As actually this should be lambdaL -> inf, and its effect is to reduce z_real to 1/sigma_e and null z_imag,
-        # we force this condition when lambdaL == 0
+        %
+        % Special case: standard conductor
+        % in our case, we use lambaL = 0 for a conductor that is only conducting and not superconducting.
+        % As actually this should be lambdaL -> inf, and its effect is to reduce z_real to 1/sigma_e and null z_imag,
+        % we force this condition when lambdaL == 0
         lambdaL_zero_and_sigma_e_nonzero = not(lambdaL_nonzero) & sigma_e_nonzero;
-        z_real(lambdaL_zero_and_sigma_e_nonzero) = (1.0 ./ sigma_e)(lambdaL_zero_and_sigma_e_nonzero);
+        invsigma_e = 1.0 ./ sigma_e;
+        z_real(lambdaL_zero_and_sigma_e_nonzero) = invsigma_e(lambdaL_zero_and_sigma_e_nonzero);
         z_imag(lambdaL_zero_and_sigma_e_nonzero) = 0.0;
-        # Special case: superconductor with only Cooper pairs
-        # for sigma_e = 0 but lambdaL finite, z_real is null and z_imag reduces to 1j*omega*mu*lambdaL^2;
-        # however this condition is already covered by in the calculation above, with no numerical issues
+        % Special case: superconductor with only Cooper pairs
+        % for sigma_e = 0 but lambdaL finite, z_real is null and z_imag reduces to 1j*omega*mu*lambdaL^2;
+        % however this condition is already covered by in the calculation above, with no numerical issues
         % (den is 1, sigma_e = 0 means z_real is null)
     end
     

@@ -34,7 +34,7 @@ num_curr_one5th = num_curr/5;
 tic
 % get the actual values of 'OneoverSigma_e'. This allows different conductivites for each voxel.
 z_real_nonemptyvoxel = z_real(idxS);
-# if not superconductor
+% if not superconductor
 if isempty(z_imag)
     diag_pulse=1./(z_real_nonemptyvoxel/dx + st_sparse_precon(1));
     diag_2Dlinear=1./(z_real_nonemptyvoxel/(6*dx) + st_sparse_precon(2));
