@@ -96,7 +96,7 @@ if any(l_L)
   lambdaL = zeros(L,M,N);
 else
   % no supercondoctors
-  lambdaL = []
+  lambdaL = [];
 end
 
 tola=1e-12;
