@@ -167,8 +167,8 @@ while(resvec(it) > tol) && (outit < maxit)
    it = it + p;
    
     % % % Calculate relative residual.
-    % % res = b - iterapp('mtimes',afun,atype,afcnstr,x);
-    % % fprintf(1,'restart %d, ||r|| = %g ( resvec %g, tol %g, reltol %g)\n' ,outit, norm(res), resvec(it), tol, tol*bnorm);
+    % % % res = b - iterapp('mtimes',afun,atype,afcnstr,x);
+    % % % fprintf(1,'restart %d/%d, ||r|| = %g ( resvec %g, resvec*bnorm %g, tol %g, tol*bnorm %g)\n' ,outit, maxit, norm(res), resvec(it), resvec(it)*bnorm, tol, tol*bnorm);
     
 end
 

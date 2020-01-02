@@ -51,6 +51,7 @@ end
 
 % Preallocate and Initialize V
 V = zeros(size(r,1),m+1);
+%rnorm = norm(r);
 V(:,1) = r / norm(r);
 
 % Preallocate H and resvec
@@ -118,6 +119,8 @@ for k = 1:m
    y = Hc \ rhs;
    res = rhs - Hc * y;
    resvec(k) = norm(res);
+   
+   %disp([', res:', num2str(resvec(k)/rnorm), '; '])
    
    % check for early convergence
    if resvec(k) < tol

@@ -20,7 +20,7 @@ lse_exploit_symmetry = 1;
 
 fl_oneoverr_kernel=1;
 if(fl_oneoverr_kernel == 1)
-    ko_grfn=6.287535065855046e-08; % ko of 3Hz
+    ko_grfn=1e-30; %6.287535065855046e-08; % ko of 3Hz
 else
     ko_grfn=ko;
 end
@@ -159,7 +159,6 @@ else
             end
         end
     end
-
     % Now let's create a temporary storage for the kernels calculated for
     % each voxel (three).
     % This is needed as MatLab does not like the (apparently) random 
@@ -179,6 +178,8 @@ else
                 
     % zero all elements within the medium interaction range (see remark above)
     G_mn(1:n_mediumL,1:n_mediumM,1:n_mediumN,:) = zeros(n_mediumL,n_mediumM,n_mediumN,7);
+    % debug
+%    G_dbg_medium = zeros(n_mediumL,n_mediumM,n_mediumN,7);
     % and now properly insert the near G_mn elements in the 'G_mn' tensor. 
     for dum = 1:size(inter_idx,1)
         [mx,my,mz] = ind2sub(size(G_mn),inter_idx(dum));
@@ -201,22 +202,38 @@ else
         % G3D,3D
         % linear(x)-linear(x') part
         G_mn(mx,my,mz,7) = G_mn(mx,my,mz,7) + K_tmp(dum,3);
+        % debug
+        % units are x
+%        G_dbg_medium(mx,my,mz,1) += 1;
+%        G_dbg_medium(mx,my,mz,2) += 1;
+%        G_dbg_medium(mx,my,mz,4) += 1;
+%        G_dbg_medium(mx,my,mz,6) += 1;
+%        G_dbg_medium(mx,my,mz,7) += 1;
+        
 
         % everything along x, second half of the quadrant (exchanging y and z)
-        
-        % Gx,x
-        G_mn(mx,mz,my,1) = K_tmp(dum,1);
-        % G2D,x
-        G_mn(mx,mz,my,2) = -K_tmp(dum,2);
-        % G2D,2D
-        % linear(x)-linear(x') part
-        G_mn(mx,mz,my,4) = G_mn(mx,mz,my,4) + K_tmp(dum,3);
-        % G2D,3D
-        % linear(x)-linear(x') part
-        G_mn(mx,mz,my,6) = G_mn(mx,mz,my,6) + K_tmp(dum,3);
-        % G3D,3D
-        % linear(x)-linear(x') part
-        G_mn(mx,mz,my,7) = G_mn(mx,mz,my,7) + K_tmp(dum,3);
+        if(my ~= mz)
+            % Gx,x
+            G_mn(mx,mz,my,1) = K_tmp(dum,1);
+            % G2D,x
+            G_mn(mx,mz,my,2) = -K_tmp(dum,2);
+            % G2D,2D
+            % linear(x)-linear(x') part
+            G_mn(mx,mz,my,4) = G_mn(mx,mz,my,4) + K_tmp(dum,3);
+            % G2D,3D
+            % linear(x)-linear(x') part
+            G_mn(mx,mz,my,6) = G_mn(mx,mz,my,6) + K_tmp(dum,3);
+            % G3D,3D
+            % linear(x)-linear(x') part
+            G_mn(mx,mz,my,7) = G_mn(mx,mz,my,7) + K_tmp(dum,3);
+            % debug
+            % units are x
+%            G_dbg_medium(mx,mz,my,1) += 1;
+%            G_dbg_medium(mx,mz,my,2) += 1;
+%            G_dbg_medium(mx,mz,my,4) += 1;
+%            G_dbg_medium(mx,mz,my,6) += 1;
+%            G_dbg_medium(mx,mz,my,7) += 1;
+        end
 
         
         % everything along y
@@ -232,21 +249,33 @@ else
         % G3D,3D
         % linear(y)-linear(y') part
         G_mn(mz,mx,my,7) = G_mn(mz,mx,my,7) + K_tmp(dum,3);
+        % debug
+        % decades are y
+%        G_dbg_medium(mz,mx,my,3) += 10;
+%        G_dbg_medium(mz,mx,my,4) += 10;
+%        G_dbg_medium(mz,mx,my,6) += 10;
+%        G_dbg_medium(mz,mx,my,7) += 10;
 
         % everything along y, second half of the quadrant (exchanging x and z)
-
-        % G2D,y
-        G_mn(my,mx,mz,3) = K_tmp(dum,2);
-        % G2D,2D
-        % linear(y)-linear(y') part
-        G_mn(my,mx,mz,4) = G_mn(my,mx,mz,4) + K_tmp(dum,3);
-        % G2D,3D
-        % linear(y)-linear(y') part
-        G_mn(my,mx,mz,6) = G_mn(my,mx,mz,6) - K_tmp(dum,3);
-        % G3D,3D
-        % linear(y)-linear(y') part
-        G_mn(my,mx,mz,7) = G_mn(my,mx,mz,7) + K_tmp(dum,3);
-
+        if(my ~= mz)
+            % G2D,y
+            G_mn(my,mx,mz,3) = K_tmp(dum,2);
+            % G2D,2D
+            % linear(y)-linear(y') part
+            G_mn(my,mx,mz,4) = G_mn(my,mx,mz,4) + K_tmp(dum,3);
+            % G2D,3D
+            % linear(y)-linear(y') part
+            G_mn(my,mx,mz,6) = G_mn(my,mx,mz,6) - K_tmp(dum,3);
+            % G3D,3D
+            % linear(y)-linear(y') part
+            G_mn(my,mx,mz,7) = G_mn(my,mx,mz,7) + K_tmp(dum,3);
+            % debug
+            % decades are y
+%            G_dbg_medium(my,mx,mz,3) += 10;
+%            G_dbg_medium(my,mx,mz,4) += 10;
+%            G_dbg_medium(my,mx,mz,6) += 10;
+%            G_dbg_medium(my,mx,mz,7) += 10;
+        end
         
         % everything along z
 
@@ -255,14 +284,23 @@ else
         % G3D,3D
         % linear(z)-linear(z') part
         G_mn(my,mz,mx,7) = G_mn(my,mz,mx,7) + 4*K_tmp(dum,3);
+        % debug
+        % hundreds are z
+%        G_dbg_medium(my,mz,mx,5) += 100;
+%        G_dbg_medium(my,mz,mx,7) += 100;
 
         % everything along z, second half of the quadrant (exchanging x and y)
-
-        % G3D,z
-        G_mn(mz,my,mx,5) = 2*K_tmp(dum,2);
-        % G3D,3D
-        % linear(z)-linear(z') part
-        G_mn(mz,my,mx,7) = G_mn(mz,my,mx,7) + 4*K_tmp(dum,3);
+        if(my ~= mz)
+          % G3D,z
+          G_mn(mz,my,mx,5) = 2*K_tmp(dum,2);
+          % G3D,3D
+          % linear(z)-linear(z') part
+          G_mn(mz,my,mx,7) = G_mn(mz,my,mx,7) + 4*K_tmp(dum,3);
+          % debug
+          % hundreds are z
+%          G_dbg_medium(mz,my,mx,5) += 100;
+%          G_dbg_medium(mz,my,mx,7) += 100;
+        end
         
     end
     disp(['  Time for computing medium interactions exploiting symmetry ::: ',num2str(toc)])
@@ -279,11 +317,11 @@ Np = Np_1D_near_S;
 
 Ls = 2;Ms = 2;Ns = 2;
 % adjust domain for singular integrals calculations
-if L <2; Ls = 1; end
-if M <2; Ms = 1; end
-if N <2; Ns = 1;end
+if L <2; Ls = L; end
+if M <2; Ms = M; end
+if N <2; Ns = N;end
 
-% calculate the constant coefficinets in front of the surface-surface
+% calculate the constant coefficients in front of the surface-surface
 % integrals
 [I1_co, I2_co, I3_co, I4_co]  = surface_surface_coeff(dx,ko_grfn);
 
@@ -387,21 +425,21 @@ if (lse_enhanced_near == 3 && Ls == Ms && Ls == Ns)
         G_mn(mx,my,mz,7) = G_mn(mx,my,mz,7) + K_tmp(dum,3);
 
         % everything along x, second half of the quadrant (exchanging y and z)
-        
-        % Gx,x
-        G_mn(mx,mz,my,1) = K_tmp(dum,1);
-        % G2D,x
-        G_mn(mx,mz,my,2) = -K_tmp(dum,2);
-        % G2D,2D
-        % linear(x)-linear(x') part
-        G_mn(mx,mz,my,4) = G_mn(mx,mz,my,4) + K_tmp(dum,3);
-        % G2D,3D
-        % linear(x)-linear(x') part
-        G_mn(mx,mz,my,6) = G_mn(mx,mz,my,6) + K_tmp(dum,3);
-        % G3D,3D
-        % linear(x)-linear(x') part
-        G_mn(mx,mz,my,7) = G_mn(mx,mz,my,7) + K_tmp(dum,3);
-
+        if(my ~= mz)        
+            % Gx,x
+            G_mn(mx,mz,my,1) = K_tmp(dum,1);
+            % G2D,x
+            G_mn(mx,mz,my,2) = -K_tmp(dum,2);
+            % G2D,2D
+            % linear(x)-linear(x') part
+            G_mn(mx,mz,my,4) = G_mn(mx,mz,my,4) + K_tmp(dum,3);
+            % G2D,3D
+            % linear(x)-linear(x') part
+            G_mn(mx,mz,my,6) = G_mn(mx,mz,my,6) + K_tmp(dum,3);
+            % G3D,3D
+            % linear(x)-linear(x') part
+            G_mn(mx,mz,my,7) = G_mn(mx,mz,my,7) + K_tmp(dum,3);
+        end
         
         % everything along y
 
@@ -418,19 +456,19 @@ if (lse_enhanced_near == 3 && Ls == Ms && Ls == Ns)
         G_mn(mz,mx,my,7) = G_mn(mz,mx,my,7) + K_tmp(dum,3);
 
         % everything along y, second half of the quadrant (exchanging x and z)
-
-        % G2D,y
-        G_mn(my,mx,mz,3) = K_tmp(dum,2);
-        % G2D,2D
-        % linear(y)-linear(y') part
-        G_mn(my,mx,mz,4) = G_mn(my,mx,mz,4) + K_tmp(dum,3);
-        % G2D,3D
-        % linear(y)-linear(y') part
-        G_mn(my,mx,mz,6) = G_mn(my,mx,mz,6) - K_tmp(dum,3);
-        % G3D,3D
-        % linear(y)-linear(y') part
-        G_mn(my,mx,mz,7) = G_mn(my,mx,mz,7) + K_tmp(dum,3);
-
+        if(my ~= mz)
+            % G2D,y
+            G_mn(my,mx,mz,3) = K_tmp(dum,2);
+            % G2D,2D
+            % linear(y)-linear(y') part
+            G_mn(my,mx,mz,4) = G_mn(my,mx,mz,4) + K_tmp(dum,3);
+            % G2D,3D
+            % linear(y)-linear(y') part
+            G_mn(my,mx,mz,6) = G_mn(my,mx,mz,6) - K_tmp(dum,3);
+            % G3D,3D
+            % linear(y)-linear(y') part
+            G_mn(my,mx,mz,7) = G_mn(my,mx,mz,7) + K_tmp(dum,3);
+        end
         
         % everything along z
 
@@ -441,12 +479,13 @@ if (lse_enhanced_near == 3 && Ls == Ms && Ls == Ns)
         G_mn(my,mz,mx,7) = G_mn(my,mz,mx,7) + 4*K_tmp(dum,3);
 
         % everything along z, second half of the quadrant (exchanging x and y)
-
-        % G3D,z
-        G_mn(mz,my,mx,5) = 2*K_tmp(dum,2);
-        % G3D,3D
-        % linear(z)-linear(z') part
-        G_mn(mz,my,mx,7) = G_mn(mz,my,mx,7) + 4*K_tmp(dum,3);
+        if(my ~= mz)
+            % G3D,z
+            G_mn(mz,my,mx,5) = 2*K_tmp(dum,2);
+            % G3D,3D
+            % linear(z)-linear(z') part
+            G_mn(mz,my,mx,7) = G_mn(mz,my,mx,7) + 4*K_tmp(dum,3);
+        end
         
     end
     
@@ -702,6 +741,21 @@ else
     disp(['  Time for computing near interactions the old way ::: ',num2str(toc)])
 end
 
+% output G_mn sub-matrix for pre-calculation
+%fid = fopen (['src_lin_vie', filesep(), 'G_mn_subset_1mm_near5.txt'], "w");
+%%J = (dx/2)^6
+%if(fid >= 0)
+%    for mx = 1:5
+%        for my = 1:5
+%            for mz = 1:5
+%                for ii = 1:7
+%                    fprintf(fid,"m_etG_mn_precalc[%i](%d,%d,%d) = %.16d;\n", ii-1, mx-1, my-1, mz-1, real(G_mn(mx,my,mz,ii)));
+%                end
+%            end
+%        end
+%    end
+%    fclose(fid);
+%end
 
 
 G_mn = G_mn /dx^4 * ko^2;
